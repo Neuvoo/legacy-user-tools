@@ -1,0 +1,52 @@
+#!/bin/bash
+# Neuvoo portage hook
+# Jacob Godserv <jacobgodserv@gmail.com>
+# 
+# Checks for and downloads the latest sqaushfs image from the neuvoo.org 
+# servers.
+
+einfo "Neuvoo sqaushfs syncing..."
+
+# make up for time-zone differences by trying tomorrow, today, and then yesterday
+dates_to_try=( "$(($(date -u '+%Y%m%d')+1))" )
+dates_to_try+=( "$(date -u '+%Y%m%d')" )
+dates_to_try+=( "$(($(date -u '+%Y%m%d')-1))" )
+
+for date in ${dates_to_try[@]}; do
+	BASENAME="portage-${date}.squashfs"
+	URI="http://neuvoo.org/neuvoo/snapshots/portage/${BASENAME}"
+	DISTDIR="${ROOT}$(source ${ROOT}/etc/make.globals && echo $DISTDIR)"
+	FILE="${DISTDIR}/${BASENAME}"
+	if [[ -f "${FILE}" ]]; then
+		FETCHCOMMAND="$(source ${ROOT}/etc/make.globals && echo $RESUMECOMMAND)"
+	else
+		FETCHCOMMAND="$(source ${ROOT}/etc/make.globals && echo $FETCHCOMMAND)"
+	fi
+
+	einfo "Retrieving ${URI}..."
+
+	FETCHCOMMAND=$(echo "${FETCHCOMMAND}" | sed 's|"*${DISTDIR}"*|'"${DISTDIR}"'|' | sed 's|"*${FILE}"*|'"${BASENAME}"'|' | sed 's|"*${URI}"*|'"${URI}"'|')
+	${FETCHCOMMAND}
+	exit_code="$?"
+
+	if [[ "$exit_code" == "8" ]]; then
+		einfo "Date too far into the future; trying again"
+	elif [[ "$exit_code" != "0" ]]; then
+		ewarn
+		ewarn "wget failed to fetch ${URI}"
+		ewarn
+	else
+		break
+	fi
+done
+
+if [[ "$exit_code" != "0" ]]; then
+	eerror
+	eerror "No squashfs images could be found!"
+	eerror
+	exit "${exit_code}"
+else
+	einfo "squashfs successfully synced!"
+	kill "${PPID}" # stops portage from --syncing the tree
+	exit 0
+fi
