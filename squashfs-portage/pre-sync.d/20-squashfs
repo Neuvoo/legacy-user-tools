@@ -27,6 +27,7 @@ for date in ${dates_to_try[@]}; do
 	BASENAME="portage-${date}.squashfs"
 	URI="${SQUASHFS_BASEURI}/${BASENAME}"
 	FILE="${SQUASHFS_BASEDIR}/${BASENAME}"
+	FILESIZE=$(stat -c%s "${FILENAME}")
 	if [[ -f "${FILE}" ]]; then
 		FETCHCOMMAND="$(source ${ROOT}/etc/make.globals && echo $RESUMECOMMAND)"
 	else
@@ -46,6 +47,11 @@ for date in ${dates_to_try[@]}; do
 		ewarn "wget failed to fetch ${URI}"
 		ewarn
 	else
+		if [[ "${FILESIZE}" == "$(stat -c%s ${FILENAME})" ]]; then
+			no_change="1"
+		else
+			no_change="0"
+		fi
 		break
 	fi
 done
@@ -59,27 +65,29 @@ fi
 
 einfo "squashfs successfully synced!"
 
-# -f is required on rm to keep rm from dying on a non-existant link
-# -f is required on ln to keep ln from dying on an existing link
-# May the -f be with them.
-rm -f "$(realpath ${SQUASHFS_LATESTSYM})" && \
-ln -f -s "${FILE}" "${SQUASHFS_LATESTSYM}"
-exit_code="$?"
+if [[ "no_change" == "0" ]]; then
+	# -f is required on rm to keep rm from dying on a non-existant link
+	# -f is required on ln to keep ln from dying on an existing link
+	# May the -f be with them.
+	rm -f "$(realpath ${SQUASHFS_LATESTSYM})" && \
+	ln -f -s "${FILE}" "${SQUASHFS_LATESTSYM}"
+	exit_code="$?"
 
-if [[ "$exit_code" != "0" ]]; then
-	eerror
-	eerror "The latest squashfs image could not be moved into place!"
-	eerror
-	exit "${exit_code}"
-fi
+	if [[ "$exit_code" != "0" ]]; then
+		eerror
+		eerror "The latest squashfs image could not be moved into place!"
+		eerror
+		exit "${exit_code}"
+	fi
 
-"${ROOT}"/usr/lib/squashfs-portage/bin/squashfs-portage-mount --remount
-exit_code="$?"
-if [[ "$exit_code" != "0" ]]; then
-	ewarn
-	ewarn "Could not remount the squashfs image. Please execute the following by hand:"
-	ewarn "\"${ROOT}/usr/lib/squashfs-portage/bin/squashfs-portage-mount\" --remount"
-	ewarn
+	"${ROOT}"/usr/lib/squashfs-portage/bin/squashfs-portage-mount --remount
+	exit_code="$?"
+	if [[ "$exit_code" != "0" ]]; then
+		ewarn
+		ewarn "Could not remount the squashfs image. Please execute the following by hand:"
+		ewarn "\"${ROOT}/usr/lib/squashfs-portage/bin/squashfs-portage-mount\" --remount"
+		ewarn
+	fi
 fi
 
 kill "${PPID}" # stops portage from --syncing the tree
