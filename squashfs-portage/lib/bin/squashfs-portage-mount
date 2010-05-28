@@ -39,6 +39,9 @@ if [[ "${action}" == "remount" || "${action}" == "unmount" ]]; then
 	fi
 fi
 
+mountpoint -q "${SQUASHFS_MOUNT}"
+is_not_mounted="$?"
+
 if [[ "${action}" == "remount" || "${action}" == "mount" ]]; then
 	if [[ "${is_not_mounted}" == "1" ]]; then
 		mount "${SQUASHFS_LATESTSYM}" "${SQUASHFS_MOUNT}" -t squashfs -o loop "${args[@]}" || exit $?
