@@ -1,0 +1,50 @@
+#!/bin/bash
+# squashfs portage tree mount script
+# Jacob Godserv <jacobgodserv@gmail.com>
+# 
+# Mounts, unmounts, and remounts the squashfs portage tree
+
+action="mount"
+ROOT=""
+args=( )
+while [[ "$1" != "" ]]; do
+	if [[ "$1" == "--mount" ]]; then
+		action="mount"
+	elif [[ "$1" == "--unmount" ]]; then
+		action="unmount"
+	elif [[ "$1" == "--remount" ]]; then
+		action="remount"
+	elif [[ "$1" == "--root" ]]; then
+		ROOT="$2"
+	elif [[ "$1" == "--help" ]]; then
+		echo "Usage: $(basename $0) [--mount|--unmount|--remount]"
+		echo "Any extra arguments are passed to mount (but not umount)"
+		exit 0
+	else
+		args+=( "$1" )
+	fi
+	shift
+done
+
+source "${ROOT}"/usr/lib/portage/bin/isolated-functions.sh || exit 1
+source "${ROOT}"/etc/conf.d/squashfs-portage || exit 1
+mountpoint -q "${SQUASHFS_MOUNT}"
+is_not_mounted="$?"
+
+if [[ "${action}" == "remount" || "${action}" == "unmount" ]]; then
+	if [[ "${is_not_mounted}" == "0" ]]; then
+		umount "${SQUASHFS_MOUNT}" || exit $?
+	else
+		ewarn "Skipping squashfs unmount, since it's already unmounted"
+	fi
+fi
+
+if [[ "${action}" == "remount" || "${action}" == "mount" ]]; then
+	if [[ "${is_not_mounted}" == "1" ]]; then
+		mount "${SQUASHFS_LATESTSYM}" "${SQUASHFS_MOUNT}" -t squashfs -o loop "${args[@]}" || exit $?
+	else
+		ewarn "Skipping squashfs mount, since it's already mounted"
+	fi
+fi
+
+exit 0

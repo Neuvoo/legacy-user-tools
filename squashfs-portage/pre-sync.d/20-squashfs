@@ -1,11 +1,22 @@
 #!/bin/bash
-# Neuvoo portage hook
+# squashfs portage hook
 # Jacob Godserv <jacobgodserv@gmail.com>
 # 
-# Checks for and downloads the latest sqaushfs image from the neuvoo.org 
-# servers.
+# Checks for and downloads the latest sqaushfs portage tree image
 
-einfo "Neuvoo sqaushfs syncing..."
+einfo "Overriding with squashfs sync..."
+
+source "${ROOT}/etc/conf.d/squashfs-portage"
+
+for dir in SQUASHFS_BASEDIR SQUASHFS_MOUNT; do
+	if [[ ! -d "${!dir}" ]]; then
+		eerror
+		eerror "${dir} does not exist or is not a directory:"
+		eerror "${!dir}"
+		eerror
+		exit 1
+	fi
+done
 
 # make up for time-zone differences by trying tomorrow, today, and then yesterday
 dates_to_try=( "$(($(date -u '+%Y%m%d')+1))" )
@@ -14,9 +25,8 @@ dates_to_try+=( "$(($(date -u '+%Y%m%d')-1))" )
 
 for date in ${dates_to_try[@]}; do
 	BASENAME="portage-${date}.squashfs"
-	URI="http://neuvoo.org/neuvoo/snapshots/portage/${BASENAME}"
-	DISTDIR="${ROOT}$(source ${ROOT}/etc/make.globals && echo $DISTDIR)"
-	FILE="${DISTDIR}/${BASENAME}"
+	URI="${SQUASHFS_BASEURI}/${BASENAME}"
+	FILE="${SQUASHFS_BASEDIR}/${BASENAME}"
 	if [[ -f "${FILE}" ]]; then
 		FETCHCOMMAND="$(source ${ROOT}/etc/make.globals && echo $RESUMECOMMAND)"
 	else
@@ -25,7 +35,7 @@ for date in ${dates_to_try[@]}; do
 
 	einfo "Retrieving ${URI}..."
 
-	FETCHCOMMAND=$(echo "${FETCHCOMMAND}" | sed 's|"*${DISTDIR}"*|'"${DISTDIR}"'|' | sed 's|"*${FILE}"*|'"${BASENAME}"'|' | sed 's|"*${URI}"*|'"${URI}"'|')
+	FETCHCOMMAND=$(echo "${FETCHCOMMAND}" | sed 's|"*${DISTDIR}"*|'"${SQUASHFS_BASEDIR}"'|' | sed 's|"*${FILE}"*|'"${BASENAME}"'|' | sed 's|"*${URI}"*|'"${URI}"'|')
 	${FETCHCOMMAND}
 	exit_code="$?"
 
@@ -45,8 +55,32 @@ if [[ "$exit_code" != "0" ]]; then
 	eerror "No squashfs images could be found!"
 	eerror
 	exit "${exit_code}"
-else
-	einfo "squashfs successfully synced!"
-	kill "${PPID}" # stops portage from --syncing the tree
-	exit 0
 fi
+
+einfo "squashfs successfully synced!"
+
+# -f is required on rm to keep rm from dying on a non-existant link
+# -f is required on ln to keep ln from dying on an existing link
+# May the -f be with them.
+rm -f "$(realpath ${SQUASHFS_LATESTSYM})" && \
+ln -f -s "${FILE}" "${SQUASHFS_LATESTSYM}"
+exit_code="$?"
+
+if [[ "$exit_code" != "0" ]]; then
+	eerror
+	eerror "The latest squashfs image could not be moved into place!"
+	eerror
+	exit "${exit_code}"
+fi
+
+"${ROOT}"/usr/lib/squashfs-portage/bin/squashfs-portage-mount --remount
+exit_code="$?"
+if [[ "$exit_code" != "0" ]]; then
+	ewarn
+	ewarn "Could not remount the squashfs image. Please execute the following by hand:"
+	ewarn "\"${ROOT}/usr/lib/squashfs-portage/bin/squashfs-portage-mount\" --remount"
+	ewarn
+fi
+
+kill "${PPID}" # stops portage from --syncing the tree
+exit 0

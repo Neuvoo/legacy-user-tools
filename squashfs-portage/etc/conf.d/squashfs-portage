@@ -1,0 +1,20 @@
+# When empty, defaults to portage's $DISTFILES
+# $ROOT is prepended automatically.
+SQUASHFS_BASEDIR=""
+# When empty, defaults to neuvoo.org's servers
+SQUASHFS_BASEURI=""
+# Simply appends mount options to the existing mount command (but not umount)
+SQUASHFS_MOUNTOPTS=""
+# When empty, defaults to $SQUASHFS_BASEDIR/mount
+# Keep in mind that aufs is used to actually make all this appear at /usr/portage
+SQUASHFS_MOUNT=""
+# When empty, defaults to portage-latest.squashfs
+# #SQUASHFS_BASEDIR is prepended automatically.
+SQUASHFS_LATESTSYM=""
+
+# DO NOT EDIT below this line!
+# The following are for sourcing this file
+SQUASHFS_BASEDIR="${ROOT}/${SQUASHFS_BASEDIR:-/var/lib/neuvoo/squashfs/}"
+SQUASHFS_BASEURI="${SQUASHFS_BASEURI:-http://neuvoo.org/neuvoo/snapshots/portage/}"
+SQUASHFS_MOUNT="${SQUASHFS_MOUNT:=${SQUASHFS_BASEDIR}/mount}"
+SQUASHFS_LATESTSYM="${SQUASHFS_BASEDIR}/${SQUASHFS_LATESTSYM:-portage-latest.squashfs}"
