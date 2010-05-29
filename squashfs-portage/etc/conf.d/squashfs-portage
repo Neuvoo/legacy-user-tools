@@ -6,8 +6,11 @@ SQUASHFS_BASEURI=""
 # Simply appends mount options to the existing mount command (but not umount)
 SQUASHFS_MOUNTOPTS=""
 # When empty, defaults to $SQUASHFS_BASEDIR/mount
-# Keep in mind that aufs is used to actually make all this appear at /usr/portage
 SQUASHFS_MOUNT=""
+# Where the final, usable portage tree mount is made. Defaults to `portageq portdir`
+SQUASHFS_AUFS_MOUNT=""
+# Where any changes to the portage tree are written (and eventually lost). Defaults to $SQUASHFS_BASEDIR/aufstmp
+SQUASHFS_AUFS_RW_MOUNT=""
 # When empty, defaults to portage-latest.squashfs
 # #SQUASHFS_BASEDIR is prepended automatically.
 SQUASHFS_LATESTSYM=""
@@ -16,5 +19,7 @@ SQUASHFS_LATESTSYM=""
 # The following are for sourcing this file
 SQUASHFS_BASEDIR="${ROOT}/${SQUASHFS_BASEDIR:-/var/lib/neuvoo/squashfs/}"
 SQUASHFS_BASEURI="${SQUASHFS_BASEURI:-http://neuvoo.org/neuvoo/snapshots/portage/}"
-SQUASHFS_MOUNT="${SQUASHFS_MOUNT:=${SQUASHFS_BASEDIR}/mount}"
-SQUASHFS_LATESTSYM="${SQUASHFS_BASEDIR}/${SQUASHFS_LATESTSYM:-portage-latest.squashfs}"
+SQUASHFS_MOUNT="${SQUASHFS_MOUNT:-${SQUASHFS_BASEDIR}/mount}"
+SQUASHFS_LATESTSYM="${SQUASHFS_BASEDIR}/${SQUASHFS_LATESTSYM:-/portage-latest.squashfs}"
+SQUASHFS_AUFS_MOUNT="${SQUASHFS_AUFS_MOUNT:-$(portageq portdir)}"
+SQUASHFS_AUFS_RW_MOUNT="${SQUASHFS_AUFS_RW_MOUNT:-${SQUASHFS_BASEDIR}/aufstmp}"

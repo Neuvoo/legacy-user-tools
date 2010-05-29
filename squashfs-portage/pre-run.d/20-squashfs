@@ -22,6 +22,6 @@ done
 exit_code="$?"
 if [[ "$exit_code" != "0" ]]; then
 	eerror "The squashfs portage tree could not be mounted."
-	eerror "If files are reported to be missing, try running emerge --sync."
+	eerror "If the portage-latest file is reported to be missing, try running emerge --sync."
 	exit "${exit_code}"
 fi
