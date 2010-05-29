@@ -1,0 +1,24 @@
+#!/bin/bash
+
+verbose_redirect="/dev/null"
+while [[ "$1" != "" ]]; do
+	if [[ "$1" == "--opt" ]]; then
+		if [[ "$2" == "--verbose" ]]; then
+			verbose_redirect="/dev/tty"
+		fi
+	elif [[ "$1" == "--action" ]]; then
+		:
+	elif [[ "$1" == "--target" ]]; then
+		:
+	else
+		ewarn "Unknown hook option: $1 $2"
+	fi
+	shift 2
+done
+
+"${ROOT}"/usr/lib/squashfs-portage/bin/squashfs-portage-mount --mount > "${verbose_redirect}" 2>&1
+exit_code="$?"
+if [[ "$exit_code" != "0" ]]; then
+	eerror "The squashfs portage tree could not be mounted."
+	exit "${exit_code}"
+fi
