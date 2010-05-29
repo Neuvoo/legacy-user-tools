@@ -4,6 +4,22 @@
 # 
 # Checks for and downloads the latest sqaushfs portage tree image
 
+verbose_redirect="/dev/null"
+while [[ "$1" != "" ]]; do
+	if [[ "$1" == "--opt" ]]; then
+		if [[ "$2" == "--verbose" ]]; then
+			verbose_redirect="/dev/tty"
+		fi
+	elif [[ "$1" == "--action" ]]; then
+		:
+	elif [[ "$1" == "--target" ]]; then
+		:
+	else
+		ewarn "Unknown hook option: $1 $2"
+	fi
+	shift 2
+done
+
 einfo "Overriding with squashfs sync..."
 
 source "${ROOT}/etc/conf.d/squashfs-portage"
@@ -36,7 +52,7 @@ for date in ${dates_to_try[@]}; do
 	einfo "Retrieving ${URI}..."
 
 	FETCHCOMMAND=$(echo "${FETCHCOMMAND}" | sed 's|"*${DISTDIR}"*|'"${SQUASHFS_BASEDIR}"'|' | sed 's|"*${FILE}"*|'"${BASENAME}"'|' | sed 's|"*${URI}"*|'"${URI}"'|')
-	${FETCHCOMMAND}
+	${FETCHCOMMAND} > "${verbose_redirect}"
 	exit_code="$?"
 
 	if [[ "$exit_code" == "8" ]]; then
