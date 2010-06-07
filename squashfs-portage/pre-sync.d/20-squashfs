@@ -102,5 +102,8 @@ if [[ "$exit_code" != "0" ]]; then
 	ewarn
 fi
 
+einfo "Shutting portage down. Portage will report a failure, so any wrapper scripts" > "${verbose_redirect}"
+einfo "like eix-sync will fail. For eix, run eix-update instead, after syncing." > "${verbose_redirect}"
+
 kill "${PPID}" # stops portage from --syncing the tree
 exit 0

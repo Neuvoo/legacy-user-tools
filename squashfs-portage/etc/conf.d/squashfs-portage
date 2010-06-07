@@ -1,4 +1,4 @@
-# When empty, defaults to portage's $DISTFILES
+# When empty, defaults to /var/lib/neuvoo/squashfs/
 # $ROOT is prepended automatically.
 SQUASHFS_BASEDIR=""
 # When empty, defaults to neuvoo.org's servers
