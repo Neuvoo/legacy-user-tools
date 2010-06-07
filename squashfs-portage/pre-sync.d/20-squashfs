@@ -52,7 +52,7 @@ for date in ${dates_to_try[@]}; do
 	einfo "Retrieving ${URI}..."
 
 	FETCHCOMMAND=$(echo "${FETCHCOMMAND}" | sed 's|"*${DISTDIR}"*|'"${SQUASHFS_BASEDIR}"'|' | sed 's|"*${FILE}"*|'"${BASENAME}"'|' | sed 's|"*${URI}"*|'"${URI}"'|')
-	${FETCHCOMMAND} > "${verbose_redirect}"
+	${FETCHCOMMAND} > "${verbose_redirect}" 2>&1
 	exit_code="$?"
 
 	if [[ "$exit_code" == "8" ]]; then
