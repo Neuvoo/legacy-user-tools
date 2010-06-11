@@ -4,6 +4,19 @@
 # Reworked for the OpenPandora - John Willis/Michael Mrozek
 # Reworked again for Neuvoo - Jacob Galbreath - http://neuvoo.org
 
+FBDIR="/var/lib/neuvoo"
+FBFILE="firstboot"
+
+# ----
+
+# Check for existing firstboot file
+
+if ! [ -d $FBDIR ] ; then 
+	mkdir -p $FBDIR
+fi
+
+if ! [ -e $FBFILE ] ; then
+
 #TODO: edit for different keyboard layouts
 #xmodmap /etc/skel/.pndXmodmap
 
@@ -21,7 +34,7 @@ date=""
 # ----
 
 # Greet the user.
-if dialog --title "Neuvoo First Boot." --yesno "Welcome to Neuvoo First Boot!\n\nThis wizard will help you setting up your Neuvoo image for first use.\n\nYou will be asked a few simple questions to personalise and configure your device.\n\nDo you want to set up your unit now or shut the unit down and do it later?" 16 50; then
+dialog --title "Neuvoo First Boot." --yesno "Welcome to Neuvoo First Boot!\n\nThis wizard will help you setting up your Neuvoo image for first use.\n\nYou will be asked a few simple questions to personalise and configure your device.\n\nDo you want to set up your unit now or shut the unit down and do it later?" 16 50
 
 # ----
 
@@ -32,7 +45,7 @@ passwd "root" <<EOF
 $rootpwd
 $rootpwd
 EOF
-	while [ "x$rootpwd" = "x" ] ; do
+	while [ "x$rootpassword" = "x" ] ; do
 		dialog --title "Password" --inputbox "Please choose a new root password." 8 50 2>$TMPINPUT ; rootpassword1=`cat $TMPINPUT`
 		dialog --title "Confirm" --inputbox "Confirm your new root password." 8 50 2>$TMPINPUT ; rootpassword2=`cat $TMPINPUT`
 		if [ $rootpassword1 != $rootpassword2 ] ; then 
@@ -49,6 +62,8 @@ passwd "root" <<EOF
 $rootpassword
 $rootpassword
 EOF
+	rm -f $TMPINPUT
+	rootpassword=""
 	rootpwd=""
 fi
 
@@ -74,13 +89,9 @@ while [ "x$name" = "x" ] ; do
 	dialog --title "Please enter your full name" --inputbox "Please enter your full name." 9 50 2>$TMPINPUT ; name=`cat $TMPINPUT`
 done
 
-echo $name
-
 while [ "x$username" = "x" ] ; do
 	dialog --title "Enter your username" --inputbox "Please choose a short username.\n\nIt should be all lowercase and contain only letters and numbers." 11 50 2>$TMPINPUT ; username=`cat $TMPINPUT`
 done
-
-echo $username
 
 useradd -c "$name,,," -G adm,audio,video,wheel,plugdev,users,pulse,pulse-access "$username"
 
@@ -108,6 +119,9 @@ $password
 $password
 EOF
 
+password=""
+rm -f $TMPINPUT
+
 # ----
 
 # Pick a name for the Neuvoo installed device.
@@ -116,8 +130,8 @@ while [ "x$hostname" = "x" ]; do
 	dialog --title "Name your device" --inputbox "Please choose a name for your Neuvoo device.\n\nIt should only contain letters, numbers and dashes." 10 50 2>$TMPINPUT ; hostname=`cat $TMPINPUT`
 done
 
-echo $hostname > /etc/hostname
-echo "127.0.0.1 localhost.localdomain localhost $hostname" > /etc/hosts
+sed 's_hostname=\"\"_hostname=\"$hostname\"_' </etc/conf.d/hostname >/etc/conf.d/hostname
+sed 's_127.0.0.1\tlocalhost_127.0.0.1\tlocalhost\t$hostname_' </etc/hosts >/etc/hosts
 hostname -F /etc/hostname
 
 # ----
@@ -147,9 +161,9 @@ dialog --title "Finished" --infobox "This concludes the First Boot Wizard.\n\nTh
 
 # Write the control file so this script is not run on next boot 
 # (hackish I know but I want the flexability to drop a new script in later esp. in the early firmwares).
-
-touch /var/lib/neuvoo/firstboot
+ 
+touch $FBDIR/$FBFILE
 # Make the control file writeable by all to allow the user to delete to rerun the wizard on next boot.
-chmod 0666 /var/lib/neuvoo/firstboot
+chmod 0666 $FBDIR/$FBFILE
 
 fi
