@@ -12,7 +12,7 @@ SQUASHFS_AUFS_MOUNT=""
 # Where any changes to the portage tree are written (and eventually lost). Defaults to $SQUASHFS_BASEDIR/aufstmp
 SQUASHFS_AUFS_RW_MOUNT=""
 # When empty, defaults to portage-latest.squashfs
-# #SQUASHFS_BASEDIR is prepended automatically.
+# $SQUASHFS_BASEDIR is prepended automatically.
 SQUASHFS_LATESTSYM=""
 
 # DO NOT EDIT below this line!

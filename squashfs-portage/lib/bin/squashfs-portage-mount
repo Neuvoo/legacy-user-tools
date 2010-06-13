@@ -5,7 +5,6 @@
 # Mounts, unmounts, and remounts the squashfs portage tree
 
 action="mount"
-ROOT=""
 args=( )
 while [[ "$1" != "" ]]; do
 	if [[ "$1" == "--mount" ]]; then
@@ -14,8 +13,6 @@ while [[ "$1" != "" ]]; do
 		action="unmount"
 	elif [[ "$1" == "--remount" ]]; then
 		action="remount"
-	elif [[ "$1" == "--root" ]]; then
-		ROOT="$2"
 	elif [[ "$1" == "--help" ]]; then
 		echo "Usage: $(basename $0) [--mount|--unmount|--remount]"
 		echo "Any extra arguments are ignored"
