@@ -21,7 +21,6 @@ done
 "${ROOT}"/usr/lib/squashfs-portage/bin/squashfs-portage-mount --mount > "${verbose_redirect}" 2>&1
 exit_code="$?"
 if [[ "$exit_code" != "0" ]]; then
-	eerror "The squashfs portage tree could not be mounted."
-	eerror "If the portage-latest file is reported to be missing, try running emerge --sync."
-	exit "${exit_code}"
+	ewarn "The squashfs portage tree could not be mounted."
+	ewarn "If the portage-latest file is reported to be missing, try running emerge --sync."
 fi
