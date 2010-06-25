@@ -4,11 +4,9 @@
 
 # Auto-generated ebin ebuild: do not edit directly!
 
-# Begin %%P%% ebuild
+## BEGIN ebuild %%P%%
 %%EBUILD%%
-# End %%P%% ebuild
-
-SRC_URI="%%SRC_URI%%"
+## END ebuild %%P%%
 
 T_XPAK="${T}/xpak"
 XPAK_ENV="${T_XPAK}/environment"
@@ -16,8 +14,10 @@ if [ -f "${XPAK_ENV}" ]; then
 	"${XPAK_ENV}"
 fi
 
+SRC_URI="%%SRC_URI%%"
+
 pkg_setup() {
-	:
+	%%USE_CHECK%%
 }
 src_unpack() {
 	full_A="${DISTDIR}/${A}"

@@ -1,0 +1,193 @@
+#!/usr/bin/python
+import math
+import os
+import portage.versions
+import re
+import sys
+from binascii import crc32
+from portage import xpak
+
+def usage():
+	print 'Usage: '+sys.argv[0]+' <src_ebuild> <ebin_ebuild> <new_xpak>'
+
+def read_group_list(ebuild_path):
+	if not os.path.exists(ebuild_path):
+		return []
+	
+	f=open(ebuild_path, 'r')
+	
+	group_list=[]
+	group={}
+	group_begin=False
+	pkg_begin=False
+	
+	use_combo_re = re.compile('## USE (.*)')
+	depend_combo_re = re.compile('## DEPEND (.*)')
+	ebuild_re = re.compile('## EBUILD (.*)')
+	for line in f:
+		if line.find('## BEGIN spec') is 0:
+			group_begin=True
+		elif not group_begin:
+			continue
+		elif line.find('## END spec') is 0:
+			group_begin=False
+			break
+		
+		elif line.find('## BEGIN group') is 0:
+			if group:
+				group_list.append(group)
+			group={}
+			pkg_begin=True
+		elif not pkg_begin:
+			continue
+		elif line.find('## END group') is 0:
+			pkg_begin=False
+			if group:
+				group_list.append(group)
+			group={}
+			
+		elif line.find('## USE') is 0:
+			if not group.get('use_combos'):
+				group['use_combos'] = []
+			group['use_combos'].append(use_combo_re.match(line).group(1))
+		elif line.find('## DEPEND') is 0:
+			if not group.get('depend_combos'):
+				group['depend_combos'] = []
+			group['depend_combos'].append(depend_combo_re.match(line).group(1))
+		elif line.find('## EBUILD') is 0:
+			group['ebuild'] = ebuild_re.match(line).group(1)
+			
+		else:
+			continue
+	
+	f.close()
+	
+	if group_begin:
+		print('Warning: group begun, but not ended')
+	if pkg_begin:
+		print('Warning: pkg begun, but not ended')
+	
+	return group_list
+
+def generate_version_hash(package_version):
+	return str(int(math.fabs(crc32(package_version))))
+
+def generate_new_ebuild_glob(package_name, package_version):
+	return package_name+'-'+generate_version_hash(package_version)+'-r*'
+
+def generate_new_ebuild_name(package_name, package_version, group_list):
+	ebuild_count = len(group_list)
+	ebuild_name = None
+	is_unique = False
+	while not is_unique:
+		ebuild_name = package_name+'-'+generate_version_hash(package_version)+'-r'+str(ebuild_count)
+		is_unique = True
+		for group in group_list:
+			if ebuild_name is group['ebuild']:
+				is_unique = False
+				break
+		
+		if is_unique is False:
+			ebuild_count+=1
+	
+	return ebuild_name
+
+def build_spec(group_list):
+	spec = '## BEGIN spec\n'
+	for group in group_list:
+		spec += '## BEGIN group\n'
+		for use_combo in group['use_combos']:
+			spec += '## USE '+use_combo+'\n'
+			spec += 'if [[ "${USE}" == \''+use_combo+'\' ]]; then\n'
+			spec += '	DEPEND="='+group['ebuild']+'"\n'
+			spec += '	IS_XPAK="yes"\n'
+			spec += 'fi\n'
+		for depend_combo in group['depend_combos']:
+			spec += '## DEPEND '+depend_combo+'\n'
+		spec += '## EBUILD '+group['ebuild']+'\n'
+		spec += '## END group\n'
+	spec += '## END spec\n'
+	return spec
+	
+def build_use_check_code(uses):
+	use_list = uses.split(' ')
+	if not use_list:
+		return ''
+	
+	code = 'if '
+	for use in use_list:
+		code += 'use \''+use+'\'; '
+	code += 'then\n'
+	code += '	: # ok\n'
+	code += 'else\n'
+	code += '	ewarn "The USE flags don\'t match the binary about to be emerged!"\n'
+	code += '	ewarn "Cancel now unless you know what you\'re doing!"\n'
+	code += '	epause\n'
+	code += 'fi\n'
+	return code
+
+if len(sys.argv) is not 4:
+	usage()
+	exit(1)
+
+src_ebuild = sys.argv[1]
+ebin_ebuild = sys.argv[2]
+new_xpak = sys.argv[3]
+
+group_list = read_group_list(ebin_ebuild)
+new_xpak_index = xpak.tbz2(new_xpak).getboth()
+
+category = xpak.getitem(new_xpak_index, 'CATEGORY').strip()
+package = xpak.getitem(new_xpak_index, 'PF').strip()
+package_split = portage.versions.catpkgsplit(package)
+package_name = package_split[1]
+package_version = package[len(package_name+"-"):]
+
+new_use = xpak.getitem(new_xpak_index, 'USE').strip()
+new_depend = xpak.getitem(new_xpak_index, 'DEPEND').strip()
+old_ebuild = xpak.getitem(new_xpak_index, package+'.ebuild').strip()
+
+existing_group = None
+new_group = None
+for i, group in enumerate(group_list):
+	if new_use in group['use_combos']:
+		existing_group = i
+		break
+
+if existing_group is None:
+	new_group = {'use_combos': [new_use], 'depend_combos': [new_depend], 'ebuild': category+'/'+generate_new_ebuild_glob(package_name, package_version)}
+	group_list.append(new_group)
+	new_ebuild_name = generate_new_ebuild_name(package_name, package_version, group_list)
+else:
+	if new_depend not in group_list[existing_group]['depend_combos']:
+		group_list[existing_group]['depend_combos'].append(new_depend)
+		new_ebuild_name = generate_new_ebuild_name(package_name, package_version, group_list)
+	else:
+		print 'Error: binary package already exists'
+		exit(2)
+
+new_spec = build_spec(group_list)
+new_use_check_code = build_use_check_code(new_use)
+
+skel_ebuild_index = open('ebin-virtual-skel.ebuild', 'r');
+new_ebuild_index = open(package+'.ebuild', 'w');
+skel_ebuild_binary = open('ebin-binary-skel.ebuild', 'r');
+new_ebuild_binary = open(new_ebuild_name+'.ebuild', 'w');
+
+for line in skel_ebuild_index:
+	line = line.replace('%%P%%', package)
+	line = line.replace('%%SPEC%%', new_spec)
+	line = line.replace('%%EBUILD%%', old_ebuild)
+	new_ebuild_index.write(line)
+
+for line in skel_ebuild_binary:
+	line = line.replace('%%P%%', package)
+	line = line.replace('%%SRC_URI%%', 'http://neuvoo.org/neuvoo/distfiles/'+category+'/'+new_ebuild_name+'.tbz2')
+	line = line.replace('%%USE_CHECK%%', new_use_check_code)
+	line = line.replace('%%EBUILD%%', old_ebuild)
+	new_ebuild_binary.write(line)
+
+skel_ebuild_index.close()
+new_ebuild_index.close()
+skel_ebuild_binary.close()
+new_ebuild_binary.close()
