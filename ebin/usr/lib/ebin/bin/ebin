@@ -172,7 +172,7 @@ else:
 new_spec = build_spec(group_list)
 new_use_check_code = build_use_check_code(new_use)
 
-skel_ebuild_index = open('ebin-virtual-skel.ebuild', 'r');
+skel_ebuild_index = open('ebin-index-skel.ebuild', 'r');
 new_ebuild_index = open(package+'.ebuild', 'w');
 skel_ebuild_binary = open('ebin-binary-skel.ebuild', 'r');
 new_ebuild_binary = open(new_ebuild_name+'.ebuild', 'w');
