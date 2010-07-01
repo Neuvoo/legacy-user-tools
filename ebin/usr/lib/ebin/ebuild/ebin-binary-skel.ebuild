@@ -8,6 +8,10 @@
 %%EBUILD%%
 ## END ebuild %%P%%
 
+RDEPEND = "$RDEPEND
+%%STRICT_DEPEND%%
+"
+
 T_XPAK="${T}/xpak"
 XPAK_ENV="${T_XPAK}/environment"
 if [ -f "${XPAK_ENV}" ]; then

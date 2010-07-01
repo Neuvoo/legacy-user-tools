@@ -4,14 +4,20 @@
 
 import math
 import os
+import portage
 import portage.versions
 import re
 import sys
+from _emerge.main import load_emerge_config
+from _emerge.depgraph import backtrack_depgraph
+from _emerge.create_depgraph_params import create_depgraph_params
 from binascii import crc32
 from portage import xpak
+from portage import config
+
 
 def usage():
-	print 'Usage: '+sys.argv[0]+' <src_ebuild> <ebin_ebuild> <new_xpak>'
+	print 'Usage: '+sys.argv[0]+' <src_ebuild> <ebin_ebuild> <new_xpak || =cat/pkg-ver>'
 
 def read_group_list(ebuild_path):
 	if not os.path.exists(ebuild_path):
@@ -129,13 +135,46 @@ def build_use_check_code(uses):
 	code += 'fi\n'
 	return code
 
+def lookup_deps(package, settings):
+
+	myopts = {}
+	myopts["--onlydeps"] = True
+	myopts["--emptytree"] = True
+	myfiles = [sys.argv[1]]
+	myaction = None
+	spinner = None
+	myparams = create_depgraph_params(myopts, myaction)
+	success, mydepgraph, favorites = backtrack_depgraph(
+		settings, trees, myopts, myparams, None, myfiles, spinner)
+	
+	if not success:
+		return None
+	
+	package_list = ''
+	found_nonreinstallss = False
+	for package in mydepgraph.altlist():
+		package_list += ' ='+package.cpv
+		if trees[settings["ROOT"]]["vartree"].dbapi.cpv_exists(package.cpv):
+			found_nonreinstallss = True
+	
+	return package_list, found_nonreinstallss
+
+
 if len(sys.argv) is not 4:
 	usage()
 	exit(1)
 
+settings, trees, mtimedb = load_emerge_config()
+
 src_ebuild = sys.argv[1]
 ebin_ebuild = sys.argv[2]
 new_xpak = sys.argv[3]
+
+if new_xpak[0] is "=":
+	new_xpak = new_xpak[1:]
+	from portage.dbapi.bintree import binarytree
+	binarytree = binarytree(settings["ROOT"], settings["PKGDIR"])
+	new_xpak = binarytree.getname(new_xpak)
 
 group_list = read_group_list(ebin_ebuild)
 new_xpak_index = xpak.tbz2(new_xpak).getboth()
@@ -146,8 +185,19 @@ package_split = portage.versions.catpkgsplit(package)
 package_name = package_split[1]
 package_version = package[len(package_name+"-"):]
 
-new_use = xpak.getitem(new_xpak_index, 'USE').strip()
-new_depend = xpak.getitem(new_xpak_index, 'DEPEND').strip()
+strict_depend, found_nonreinstallss = lookup_deps(package, settings)
+if strict_depend is None:
+	print "Failed to lookup strict dependencies for " + package
+	exit(2)
+elif found_nonreinstallss:
+	print "Found packages that still need attention, such as new and upgraded packages."
+	print "Refusing to build binary based on incomplete dependancy data."
+	exit(2)
+
+# These must exist on one line only
+new_use = ' '.join(xpak.getitem(new_xpak_index, 'USE').strip().splitlines())
+new_depend = ' '.join((xpak.getitem(new_xpak_index, 'DEPEND')+ ' ' + strict_depend).strip().splitlines())
+
 old_ebuild = xpak.getitem(new_xpak_index, package+'.ebuild').strip()
 
 existing_group = None
@@ -187,6 +237,8 @@ for line in skel_ebuild_binary:
 	line = line.replace('%%P%%', package)
 	line = line.replace('%%SRC_URI%%', 'http://neuvoo.org/neuvoo/distfiles/'+category+'/'+new_ebuild_name+'.tbz2')
 	line = line.replace('%%USE_CHECK%%', new_use_check_code)
+	line = line.replace('%%DEPEND%%', new_depend)
+	line = line.replace('%%STRICT_DEPEND%%', strict_depend)
 	line = line.replace('%%EBUILD%%', old_ebuild)
 	new_ebuild_binary.write(line)
 
