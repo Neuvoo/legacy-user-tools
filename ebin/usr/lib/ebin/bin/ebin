@@ -1,4 +1,7 @@
 #!/usr/bin/python
+# Builds a new binary ebuild, and regenerates the binary index ebuild
+# Jacob Godserv <jacobgodserv@gmail.com>
+
 import math
 import os
 import portage.versions
