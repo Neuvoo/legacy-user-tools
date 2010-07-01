@@ -7,9 +7,7 @@ while [[ "$1" != "" ]]; do
 			verbose_redirect="/dev/tty"
 		fi
 	elif [[ "$1" == "--action" ]]; then
-		if [[ "$2" == "sync" ]]; then
-			exit 0 # allow sync, which is handled by us
-		fi
+		:
 	elif [[ "$1" == "--target" ]]; then
 		:
 	else
