@@ -1,0 +1,71 @@
+#!/bin/bash
+
+ebin_lib="/usr/lib/ebin/"
+source "${ROOT}"/etc/conf.d/ebin
+
+verbose_redirect="/dev/null"
+debug_redirect="/dev/null"
+ebuilds=( )
+bdeps=""
+while [[ "$1" != "" ]]; do
+	if [[ "$1" == "--opt" ]]; then
+		if [[ "$2" == "--verbose" ]]; then
+			verbose_redirect="/dev/tty"
+		elif [[ "$2" == "--debug" ]]; then
+			debug_redirect="/dev/tty"
+		elif [[ "$2" == "--quiet" ]]; then
+			verbose_redirect="/dev/null"
+			debug_redirect="/dev/null"
+		elif [[ "$2" == "--with-bdeps" ]]; then
+			bdeps="1"
+		fi
+	elif [[ "$1" == "--action" ]]; then
+		if [[ "$2" != "merge" ]]; then
+			exit 0
+		fi
+	elif [[ "$1" == "--target" ]]; then
+		ebuilds+=( "${2}" ) # unused
+	else
+		ewarn "Unknown hook option: $1 $2" &> "${verbose_redirect}"
+	fi
+	shift 2
+done
+
+if ! hasq "buildpkg" "${FEATURES}"; then
+	ewarn 'ebin only builds when FEATURES="buildpkg" is enabled' &> "${verbose_redirect}"
+	exit 0
+fi
+
+if [ ! -f "${PORTAGE_TMPDIR}/ebin-todo.${PPID}" ]; then
+	exit 0
+fi
+
+exit_status="0"
+if [[ -n "${bdeps}" ]]; then
+	while read src_pkg; do
+		src_pkg="$(portageq best_version ${ROOT} ${src_pkg})"
+		if [ ! -n "${src_pkg}" ]; then
+			eerror "Failed to resolve ${src_pkg} to a specific package atom"
+			exit_status="1"
+		else
+			if [[ "$(expr substr ${src_pkg} 1 4)" == "bin-" ]]; then
+				ewarn "Skipping binary ebin ${src_pkg}"
+			fi
+			src_pkg='='"${src_pkg}"
+		fi
+		
+		einfo "Executing ebin for ${src_pkg} ..."  &> "${verbose_redirect}"
+		"${ebin_lib}"/bin/ebin "${EBIN_OVERLAY}" "${src_pkg}"
+		this_exit_status="$?"
+		
+		if [[ "${this_exit_status}" != "0" ]]; then
+			eerror "ebin exited with error code ${this_exit_status}"
+			exit_status="1"
+		fi
+	done < "${PORTAGE_TMPDIR}/ebin-todo.${PPID}"
+else
+	ewarn "No --with-bdeps=y, so we cannot accurately generate ebins"
+fi
+
+rm -f "${PORTAGE_TMPDIR}/ebin-todo.${PPID}"
+exit "${exit_status}"

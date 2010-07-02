@@ -1,42 +1,32 @@
 #!/bin/bash
 
-ebin_lib="/usr/lib/ebin/"
-source "${ROOT}"/etc/conf.d/ebin
+if [[ -n "${IS_XPAK}" ]]; then
+	exit 0
+fi
 
 verbose_redirect="/dev/null"
 debug_redirect="/dev/null"
+ebuilds=( )
 while [[ "$1" != "" ]]; do
 	if [[ "$1" == "--opt" ]]; then
 		if [[ "$2" == "--verbose" ]]; then
 			verbose_redirect="/dev/tty"
-		fi
-		if [[ "$2" == "--debug" ]]; then
+		elif [[ "$2" == "--debug" ]]; then
 			debug_redirect="/dev/tty"
-		fi
-		if [[ "$2" == "--quiet" ]]; then
+		elif [[ "$2" == "--quiet" ]]; then
 			verbose_redirect="/dev/null"
 			debug_redirect="/dev/null"
 		fi
 	elif [[ "$1" == "--action" ]]; then
 		if [[ "$2" != "postinst" ]]; then
-			# only execute on phase postinst
 			exit 0
 		fi
 	elif [[ "$1" == "--target" ]]; then
-		src_ebuild="${2}"
+		ebuilds+=( "${2}" ) # unused
 	else
 		ewarn "Unknown hook option: $1 $2" &> "${verbose_redirect}"
 	fi
 	shift 2
 done
 
-ebin_ebuild="${EBIN_OVERLAY}/${CATEGORY}/${PF}.ebuild"
-
-"${ebin_lib}"/bin/ebin "${src_ebuild}" "${ebin_ebuild}" "=${CATEGORY}/${PF}"
-exit_status="$?"
-
-if [[ "${exit_status}" != "0" ]]; then
-	eerror "ebin exited with an error"
-fi
-
-exit "${exit_status}"
+echo "${CATEGORY}/${PF}" > "${PORTAGE_TMPDIR}/ebin-todo.${PPID}"

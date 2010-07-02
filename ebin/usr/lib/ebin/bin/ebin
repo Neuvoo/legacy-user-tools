@@ -15,9 +15,10 @@ from binascii import crc32
 from portage import xpak
 from portage import config
 
+ebin_lib=os.environ["ROOT"]+"/usr/lib/ebin/"
 
 def usage():
-	print 'Usage: '+sys.argv[0]+' <src_ebuild> <ebin_ebuild> <new_xpak || =cat/pkg-ver>'
+	print 'Usage: '+sys.argv[0]+' <ebin_ebuild_overlay> <new_xpak || =cat/pkg-ver>'
 
 def read_group_list(ebuild_path):
 	if not os.path.exists(ebuild_path):
@@ -81,9 +82,6 @@ def read_group_list(ebuild_path):
 def generate_version_hash(package_version):
 	return str(int(math.fabs(crc32(package_version))))
 
-def generate_new_ebuild_glob(package_name, package_version):
-	return package_name+'-'+generate_version_hash(package_version)+'-r*'
-
 def generate_new_ebuild_name(package_name, package_version, group_list):
 	ebuild_count = len(group_list)
 	ebuild_name = None
@@ -108,7 +106,7 @@ def build_spec(group_list):
 		for use_combo in group['use_combos']:
 			spec += '## USE '+use_combo+'\n'
 			spec += 'if [[ "${USE}" == \''+use_combo+'\' ]]; then\n'
-			spec += '	DEPEND="='+group['ebuild']+'"\n'
+			spec += '	RDEPEND="='+group['ebuild']+'"\n'
 			spec += '	IS_XPAK="yes"\n'
 			spec += 'fi\n'
 		for depend_combo in group['depend_combos']:
@@ -127,7 +125,7 @@ def build_use_check_code(uses):
 	for use in use_list:
 		code += 'use \''+use+'\'; '
 	code += 'then\n'
-	code += '	: # ok\n'
+	code += '	IS_XPAK="1" # ok\n'
 	code += 'else\n'
 	code += '	ewarn "The USE flags don\'t match the binary about to be emerged!"\n'
 	code += '	ewarn "Cancel now unless you know what you\'re doing!"\n'
@@ -140,7 +138,7 @@ def lookup_deps(package, settings):
 	myopts = {}
 	myopts["--onlydeps"] = True
 	myopts["--emptytree"] = True
-	myfiles = [sys.argv[1]]
+	myfiles = ['='+package]
 	myaction = None
 	spinner = None
 	myparams = create_depgraph_params(myopts, myaction)
@@ -154,21 +152,21 @@ def lookup_deps(package, settings):
 	found_nonreinstallss = False
 	for package in mydepgraph.altlist():
 		package_list += ' ='+package.cpv
-		if trees[settings["ROOT"]]["vartree"].dbapi.cpv_exists(package.cpv):
+		if not trees[settings["ROOT"]]["vartree"].dbapi.cpv_exists(package.cpv):
+			print package.cpv
 			found_nonreinstallss = True
 	
 	return package_list, found_nonreinstallss
 
 
-if len(sys.argv) is not 4:
+if len(sys.argv) is not 3:
 	usage()
 	exit(1)
 
 settings, trees, mtimedb = load_emerge_config()
 
-src_ebuild = sys.argv[1]
-ebin_ebuild = sys.argv[2]
-new_xpak = sys.argv[3]
+ebin_ebuild_overlay = sys.argv[1]
+new_xpak = sys.argv[2]
 
 if new_xpak[0] is "=":
 	new_xpak = new_xpak[1:]
@@ -176,7 +174,6 @@ if new_xpak[0] is "=":
 	binarytree = binarytree(settings["ROOT"], settings["PKGDIR"])
 	new_xpak = binarytree.getname(new_xpak)
 
-group_list = read_group_list(ebin_ebuild)
 new_xpak_index = xpak.tbz2(new_xpak).getboth()
 
 category = xpak.getitem(new_xpak_index, 'CATEGORY').strip()
@@ -184,6 +181,9 @@ package = xpak.getitem(new_xpak_index, 'PF').strip()
 package_split = portage.versions.catpkgsplit(package)
 package_name = package_split[1]
 package_version = package[len(package_name+"-"):]
+
+ebin_ebuild = portage.os.path.join(ebin_ebuild_overlay, category, package_name, package+'.ebuild')
+group_list = read_group_list(ebin_ebuild)
 
 strict_depend, found_nonreinstallss = lookup_deps(package, settings)
 if strict_depend is None:
@@ -195,8 +195,26 @@ elif found_nonreinstallss:
 	exit(2)
 
 # These must exist on one line only
-new_use = ' '.join(xpak.getitem(new_xpak_index, 'USE').strip().splitlines())
-new_depend = ' '.join((xpak.getitem(new_xpak_index, 'DEPEND')+ ' ' + strict_depend).strip().splitlines())
+
+new_use = xpak.getitem(new_xpak_index, 'USE')
+if new_use is not None:
+	new_use = ' '.join(new_use.strip().splitlines())
+else:
+	new_use = ''
+
+new_pdepend = xpak.getitem(new_xpak_index, 'PDEPEND')
+if new_pdepend is not None:
+	new_pdepend = ' '.join(new_pdepend.strip().splitlines())
+else:
+	new_pdepend = ''
+
+new_rdepend = xpak.getitem(new_xpak_index, 'RDEPEND')
+if new_rdepend is not None:
+	new_rdepend = ' '.join(new_rdepend.strip().splitlines())
+else:
+	new_rdepend = ''
+
+new_depend = ' '.join((new_rdepend + ' ' + new_pdepend + ' ' + strict_depend).strip().splitlines())
 
 old_ebuild = xpak.getitem(new_xpak_index, package+'.ebuild').strip()
 
@@ -208,13 +226,13 @@ for i, group in enumerate(group_list):
 		break
 
 if existing_group is None:
-	new_group = {'use_combos': [new_use], 'depend_combos': [new_depend], 'ebuild': category+'/'+generate_new_ebuild_glob(package_name, package_version)}
+	new_ebuild_name = generate_new_ebuild_name(package_name+'-binpkg', package_version, group_list)
+	new_group = {'use_combos': [new_use], 'depend_combos': [new_depend], 'ebuild': 'bin-'+category+'/'+new_ebuild_name}
 	group_list.append(new_group)
-	new_ebuild_name = generate_new_ebuild_name(package_name, package_version, group_list)
 else:
 	if new_depend not in group_list[existing_group]['depend_combos']:
 		group_list[existing_group]['depend_combos'].append(new_depend)
-		new_ebuild_name = generate_new_ebuild_name(package_name, package_version, group_list)
+		new_ebuild_name = generate_new_ebuild_name(package_name+'-binpkg', package_version, group_list)
 	else:
 		print 'Error: binary package already exists'
 		exit(2)
@@ -222,10 +240,20 @@ else:
 new_spec = build_spec(group_list)
 new_use_check_code = build_use_check_code(new_use)
 
-skel_ebuild_index = open('ebin-index-skel.ebuild', 'r');
-new_ebuild_index = open(package+'.ebuild', 'w');
-skel_ebuild_binary = open('ebin-binary-skel.ebuild', 'r');
-new_ebuild_binary = open(new_ebuild_name+'.ebuild', 'w');
+if not os.path.exists(ebin_ebuild_overlay+'/bin-'+category+'/'):
+	os.mkdir(ebin_ebuild_overlay+'/bin-'+category+'/')
+if not os.path.exists(ebin_ebuild_overlay+'/bin-'+category+'/'+package_name+'-binpkg/'):
+	os.mkdir(ebin_ebuild_overlay+'/bin-'+category+'/'+package_name+'-binpkg/')
+if not os.path.exists(ebin_ebuild_overlay+'/'+category+'/'):
+	os.mkdir(ebin_ebuild_overlay+'/'+category+'/')
+if not os.path.exists(ebin_ebuild_overlay+'/'+category+'/'+package_name+'/'):
+	os.mkdir(ebin_ebuild_overlay+'/'+category+'/'+package_name+'/')
+skel_ebuild_index = open(ebin_lib+'/ebuild/ebin-index-skel.ebuild', 'r');
+new_ebuild_index_path = ebin_ebuild_overlay+'/'+category+'/'+package_name+'/'+package+'.ebuild'
+new_ebuild_index = open(new_ebuild_index_path, 'w');
+skel_ebuild_binary = open(ebin_lib+'/ebuild/ebin-index-skel.ebuild', 'r');
+new_ebuild_binary_path = ebin_ebuild_overlay+'/bin-'+category+'/'+package_name+'-binpkg/'+new_ebuild_name+'.ebuild'
+new_ebuild_binary = open(new_ebuild_binary_path, 'w');
 
 for line in skel_ebuild_index:
 	line = line.replace('%%P%%', package)
@@ -246,3 +274,12 @@ skel_ebuild_index.close()
 new_ebuild_index.close()
 skel_ebuild_binary.close()
 new_ebuild_binary.close()
+
+import subprocess
+if subprocess.call(['ebuild', new_ebuild_index_path, 'manifest']) is not 0:
+	print "Manifest failed"
+	exit(2)
+
+if subprocess.call(['ebuild', new_ebuild_binary_path, 'manifest']) is not 0:
+	print "Manifest failed"
+	exit(2)
