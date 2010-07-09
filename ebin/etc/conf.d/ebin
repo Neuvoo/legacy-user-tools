@@ -1,7 +1,0 @@
-# When empty, defaults to /tmp
-# $ROOT is prepended automatically.
-EBIN_OVERLAY=""
-
-# DO NOT EDIT below this line!
-# The following are for sourcing this file
-EBIN_OVERLAY="${ROOT}/""${EBIN_OVERLAY:-/tmp/}"
