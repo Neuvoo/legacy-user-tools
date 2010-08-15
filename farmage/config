@@ -1,0 +1,19 @@
+#!/bin/bash
+# These variables are in the environment before this configuration is sourced:
+# basedir = "path to parent directory of farmage.sh"
+# device = "name of Neuvoo-supported device"
+# cpv = "portage-recognized package atom or set"
+
+build_dir="${basedir}/${device}"
+timezone_path="/usr/share/zoneinfo/America/New_York"
+#staging_ssh_uri="user@host" # see bottom for note
+staging_ssh_path="/data/host/htdocs/${device}/.staging"
+mirror_ssh_uri="user@host"
+mirror_ssh_path="/data/host/htdocs/${device}"
+mirror_http_uri="http://host/${device}/" 
+lock_ssh_uri="user@host"
+lock_ssh_path="/data/host/htdocs/${device}/.lock"
+
+# Do NOT change this or attempt to override
+# Support for differing staging and mirror locations is not yet available
+staging_ssh_uri="${mirror_ssh_uri}"
