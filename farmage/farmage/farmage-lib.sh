@@ -16,11 +16,11 @@ function setup_chroot() {
 	fi
 	build_dir="${1}"
 
-#	vrun mount --bind /usr/portage "${build_dir}"/usr/portage && \ # should be handled by emerge --sync within chroot
 	vrun mount --bind /proc "${build_dir}"/proc && \
 	vrun mount --bind /sys "${build_dir}"/sys && \
 	vrun mount --bind /dev/pts "${build_dir}"/dev/pts && \
-	vrun cp -L /etc/resolv.conf "${build_dir}"/etc/
+	vrun cp -L /etc/resolv.conf "${build_dir}"/etc/ # && \
+#	vrun mount --bind /usr/portage "${build_dir}"/usr/portage # should be handled by emerge --sync within chroot
 	return $?
 }
 
@@ -34,8 +34,8 @@ function takedown_chroot() {
 
 #	vrun umount "${build_dir}"/usr/portage && \
 	vrun umount "${build_dir}"/dev/pts && \
-	vrun umount "${build_dir}"/proc && \
-	vrun umount "${build_dir}"/sys
+	vrun umount "${build_dir}"/sys && \
+	vrun umount "${build_dir}"/proc
 	return $?
 }
 
