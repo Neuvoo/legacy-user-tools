@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$(dirname $0)/farmage-lib.sh"
+source "$(dirname $0)/lib"
 
 function usage() {
 	echo "Usage: $(basename $0) --action [shell|add|remove] --cpv [category/package-version] --build-dir [/path/to/chroot/] --staging-ssh-uri [user@host] --staging-ssh-path [/path/to/staging] --mirror-ssh-uri [user@host] --mirror-ssh-path [/path/to/mirror] --mirror-http-uri [http://host/path/to/mirror] --lock-ssh-uri [user@host] --lock-ssh-path [/path/to/lock] [--ask] [--once]"
@@ -160,7 +160,7 @@ cat > "${build_dir}/chroot.run" <<EOF
 env-update && source /etc/profile
 EOF
 
-cat "$(dirname $0)/farmage-lib.sh" >> "${build_dir}/chroot.run"
+cat "$(dirname $0)/lib" >> "${build_dir}/chroot.run"
 
 cat >> "${build_dir}/chroot.run" <<EOF
 export PKGDIR="${binpkg_dir}"

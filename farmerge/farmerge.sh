@@ -74,9 +74,9 @@ if [[ "${action}" == "build" || "${action}" == "remove" || "${action}" == "shell
 	if [[ "${action}" == "build" ]]; then
 		action="add"
 	fi
-	"${basedir}/farmage/farmage-build.sh" --action "${action}" --cpv "${cpv}" --build-dir "${build_dir}" --staging-ssh-uri "${staging_ssh_uri}" --staging-ssh-path "${staging_ssh_path}" --mirror-ssh-uri "${mirror_ssh_uri}" --mirror-ssh-path "${mirror_ssh_path}" --mirror-http-uri "${mirror_http_uri}" --lock-ssh-uri "${lock_ssh_uri}" --lock-ssh-path "${lock_ssh_path}" "${extra_args[@]}"
+	"${basedir}/modules/build" --action "${action}" --cpv "${cpv}" --build-dir "${build_dir}" --staging-ssh-uri "${staging_ssh_uri}" --staging-ssh-path "${staging_ssh_path}" --mirror-ssh-uri "${mirror_ssh_uri}" --mirror-ssh-path "${mirror_ssh_path}" --mirror-http-uri "${mirror_http_uri}" --lock-ssh-uri "${lock_ssh_uri}" --lock-ssh-path "${lock_ssh_path}" "${extra_args[@]}"
 elif [[ "$action" == "force-unlock" ]]; then
-	source "${basedir}/farmage/farmage-lib.sh"
+	source "${basedir}/modules/lib"
 	unlock_mirror "${lock_ssh_uri}" "${lock_ssh_path}"
 elif [[ "$action" == "setup-chroot" ]]; then
 	if [[ ! -n "${tarball}" ]]; then
@@ -85,7 +85,7 @@ elif [[ "$action" == "setup-chroot" ]]; then
 		exit 255
 	fi
 
-	"${basedir}/farmage/farmage-setup-chroot.sh" --build-dir "${build_dir}" --tarball "${tarball}" --tarball-is-stage5 --timezone-path "${timezone_path}"
+	"${basedir}/modules/setup-chroot" --build-dir "${build_dir}" --tarball "${tarball}" --tarball-is-stage5 --timezone-path "${timezone_path}"
 else
 	echo "action not understood: ${action}"
 	usage

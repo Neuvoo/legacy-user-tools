@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$(dirname $0)/farmage-lib.sh"
+source "$(dirname $0)/lib"
 
 function usage() {
 	echo "Usage: $(basename $0) --build-dir [/path/to/chroot/] --tarball [/path/to/tarball] --timezone-path [/usr/share/zoneinfo/timezone] [--tarball-is-stage5]"
