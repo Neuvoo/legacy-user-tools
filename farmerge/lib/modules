@@ -1,0 +1,13 @@
+#!/bin/bash
+
+function module_list() {
+	local modules_base_dir
+	modules_base_dir="${1}"
+	if [[ ! -d "${modules_base_dir}" ]]; then
+		echo "Error: module_list: first argument must reference the modules dir: ${modules_base_dir}"
+		exit 255
+	fi
+	find "${modules_base_dir}" -mindepth 1 -name '[^_]*' | while read module; do
+		echo "${module}" | sed 's|'"${modules_base_dir}"'[/]*||'
+	done
+}

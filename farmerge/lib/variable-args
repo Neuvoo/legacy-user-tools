@@ -1,0 +1,48 @@
+#!/bin/bash
+
+function human_to_machine_arg() {
+	echo "${@}" | tr '[:lower:]' '[:upper:]' | tr - _
+}
+
+function machine_to_human_arg() {
+	echo "${@}" | tr '[:upper:]' '[:lower:]' | tr _ -
+}
+
+function usage() {
+	echo -n "Module usage: "
+	for i in "${understood_args[@]}"; do
+		human_i=$(machine_to_human_arg "${i}")
+		echo -n "--${human_i} <${human_i}> "
+	done; echo
+	echo
+	echo "Setting these variables in the configuration will have the same effect:"
+	for i in "${understood_args[@]}"; do
+		human_i=$(machine_to_human_arg "${i}")
+		echo "${i}: --${human_i} <${human_i}>"
+	done
+	echo
+	echo "Arguments take precedence over configuration."
+}
+
+while [[ "$1" != "" ]]; do
+	if [[ "${1:0:2}" != "--" || "${1:2}" == "${arg}" ]]; then
+		echo "Error: argument not understood: ${1}"
+		usage
+		exit 255
+	fi
+	arg="${1:2}"
+	machine_arg=$(human_to_machine_arg "${arg}")
+	for ((i = 0; i < "${#understood_args[@]}"; i++)); do
+		if [[ "${understood_args[$i]}" == "${machine_arg}" ]]; then
+			if [[ "$2" == "" ]]; then
+				echo "Error: argument ${1} requires another argument"
+				exit 255
+			fi
+			second_arg=$(echo "${2}" | sed "s|'|'"'"'"'"'"'"'|g")
+			eval "${machine_arg}"'='"'${second_arg}'"
+			shift 2
+		fi
+	done
+done
+
+

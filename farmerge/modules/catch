@@ -1,0 +1,36 @@
+#!/bin/bash
+
+function module_catch_usage() {
+	echo "Allows a user to catch a failure farmerge attempts to clean up and quit."
+	echo 
+	echo "Usage: catch <module name> [<module arg> ...]"
+}
+
+args=( )
+module="${1}"
+shift
+while [[ "$1" != "" ]]; do
+	args+=( "${1}" )
+	shift
+done
+
+if [[ "${module}" == "--help" ]]; then
+	module_catch_usage
+	exit
+fi
+
+if [[ "${module}" == "" ]]; then
+	echo "Error: catch was not passed enough arguments" >&2
+	module_catch_usage
+	exit 255
+fi
+
+"${MODULES_BASEDIR}/_exec-module" "${module}" "${args[@]}"
+exit_code="$?"
+
+if [[ "$exit_code" == "0" ]]; then
+	exit
+fi
+
+echo "Module ${module} reported a failure. Opening a shell..."
+"${MODULES_BASEDIR}/_exec-module" "shell"

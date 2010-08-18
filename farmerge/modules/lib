@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo 'WARNING: old module is using deprecated lib module, may fail!' >&2
+
 function vrun () {
 	local args
 	args=( "${@}" )

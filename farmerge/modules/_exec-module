@@ -1,0 +1,22 @@
+#!/bin/bash
+
+module="${1}"
+shift
+
+if [[ ! -f "${MODULES_BASEDIR}/${module}" ]]; then
+	echo "Error: module not found: ${module}"
+	usage
+	exit 255
+fi
+
+args=( )
+while [[ "$1" != "" ]]; do
+	args+=( "$1" )
+	shift
+done
+
+echo " >>> Executing '${module} ${args[@]}'..."
+"${MODULES_BASEDIR}/${module}" "${args[@]}"; exit_status="$?"
+echo " >>> Exitting ${module}"
+
+exit "${exit_status}"
