@@ -32,5 +32,5 @@ if [[ "$exit_code" == "0" ]]; then
 	exit
 fi
 
-echo "Module ${module} reported a failure. Opening a shell..."
+echo "Module ${module} reported exit code ${exit_code}. Opening a shell..."
 "${MODULES_BASEDIR}/_exec-module" "shell"

@@ -2,14 +2,6 @@
 
 echo 'WARNING: old module is using deprecated lib module, may fail!' >&2
 
-function vrun () {
-	local args
-	args=( "${@}" )
-	echo "Executing \"${args[@]}\"..."
-	"${args[@]}"
-	return $?
-}
-
 function setup_chroot() {
 	local build_dir
 	if [[ "$1" == "" ]]; then

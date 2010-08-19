@@ -1,0 +1,9 @@
+#!/bin/bash
+
+function vrun () {
+	local args
+	args=( "${@}" )
+	echo "Executing \"${args[@]}\"..."
+	"${args[@]}"
+	return $?
+}

@@ -14,6 +14,15 @@ export BASEDIR="$(dirname $0)"
 export CONF_BASEDIR="${BASEDIR}/conf"
 export LIB_BASEDIR="${BASEDIR}/lib"
 export MODULES_BASEDIR="${BASEDIR}/modules"
+export TMP_BASEDIR="$(mktemp -d)"
+
+trap 'source ${LIB_BASEDIR}/hooks
+      execute_hooks shutdown
+      rm -r "${TMP_BASEDIR}"' 0
+# the following handler will exit the script on receiving these signals
+# the trap on "0" (EXIT) from above will be triggered by this trap's "exit" command
+trap 'echo "Killed." >&2
+      exit 1' 1 2 3 15
 
 source "${LIB_BASEDIR}/modules"
 

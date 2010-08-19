@@ -1,0 +1,96 @@
+#!/bin/bash
+
+understood_stages=( "exit" )
+
+hooks_basedir="${TMP_BASEDIR}/hooks"
+
+if [[ ! -d "${hooks_basedir}" ]]; then
+	mkdir "${hooks_basedir}" || return $?
+fi
+for i in "${understood_stages[@]}"; do
+	if [[ ! -d "${hooks_basedir}/${i}" ]]; then
+		mkdir "${hooks_basedir}/${i}" || return $?
+	fi
+done
+
+function add_hook () {
+	local stage hook_uid exec
+	stage="${1}"; shift
+	hook_uid="${2}"; shift
+	exec="${@}"
+	if [[ "${stage}" == "" ]]; then
+		echo "Error: add_hook: stage must be specified" >&2
+		return 255
+	elif [[ "${hook_uid}" == "" ]]; then
+		echo "Error: add_hook: hook_uid must be specified" >&2
+		return 255
+	elif [[ "${exec}" == "" ]]; then
+		echo "Error: add_hook: exec must be specified" >&2
+		return 255
+	fi
+	
+	for i in "${understood_stages[@]}"; do
+		if [[ "${stage}" == "${i}" ]]; then
+			if [[ ! -f "${hooks_basedir}/${stage}/${hook_uid}" ]]; then
+				cat > "${hooks_basedir}/${stage}/${hook_uid}" <<EOF
+#!/bin/bash
+${exec}
+exit $?
+EOF
+				return
+			else
+				return 254
+			fi
+		fi
+	done
+	
+	echo "Error: add_hook: invalid stage: ${stage}"
+	return 255
+}
+
+function delete_hook () {
+	local stage hook_uid
+	stage="${1}"; shift
+	hook_uid="${2}"; shift
+	if [[ "${stage}" == "" ]]; then
+		echo "Error: add_hook: stage must be specified" >&2
+		return 255
+	elif [[ "${hook_uid}" == "" ]]; then
+		echo "Error: add_hook: hook_uid must be specified" >&2
+		return 255
+	fi
+	
+	if [[ -f "${hooks_basedir}/${stage}/${hook_uid}" ]]; then
+		rm "${hooks_basedir}/${stage}/${hook_uid}" || return $?
+	else
+		return 254
+	fi
+}
+
+function execute_hooks () {
+	local stage some_failed
+	some_failed="0"
+	stage="${1}"
+	
+	if [[ "${stage}" == "" ]]; then
+		echo "Error: stage: stage must be specified" >&2
+		return 255
+	fi
+	
+	if [[ "$(find ${hooks_basedir}/${stage} -type d -empty)" != "" ]]; then
+		return
+	fi
+	
+	for i in ${hooks_basedir}/${stage}/*; do
+		if [[ ! -f "${i}" ]]; then
+			echo "Warning: skipping non-file: ${i}" >&2
+		fi
+		( "${i}" ) || some_failed="1"
+		rm "${i}"
+	done
+	
+	if [[ "${some_failed}" == "1" ]]; then
+		echo "Error: some hooks reported failure"
+		return 1
+	fi
+}

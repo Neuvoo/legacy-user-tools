@@ -1,0 +1,30 @@
+#!/bin/bash
+
+source "${MODULES_BASEDIR}/lib"
+
+required_args=( "BUILD_DIR" "TARBALL" "TIMEZONE_PATH" )
+understood_args=( "${required_args[@]}" )
+understood_args+=( "TARBALL_IS_STAGE5" )
+source "${LIB_BASEDIR}/variable-args" || exit $?
+check_for_required_args "${required_args}"
+
+if [[ "${TARBALL}" == *stage5* ]]; then
+	TARBALL_IS_STAGE5="1"
+else
+	echo "WARNING: this may not be a stage5 tarball!"
+	echo "Please cancel this if you are not using a stage5 tarball, unless you know what you're doing!"
+	sleep 5
+fi
+
+if [[ ! -n "${TARBALL_IS_STAGE5}" ]]; then
+	echo "--$(machine_to_human_arg TARBALL) ought to reference a stage5 tarball, or whichever has the most packages."
+	echo "If you are certain the tarball specified is a the right one, append --$(machine_to_human_arg TARBALL_IS_STAGE5) to arguments"
+	usage
+	exit 255
+fi
+
+vrun mkdir "${BUILD_DIR}" && \
+vrun tar -xvpf "${TARBALL}" -C "${BUILD_DIR}" && \
+vrun chmod +rx "${BUILD_DIR}" && \
+vrun ln -sf "${TIMEZONE_PATH}" "${BUILD_DIR}/etc/localtime"
+exit $?

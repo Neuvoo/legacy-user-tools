@@ -28,7 +28,7 @@ while [[ "$1" != "" ]]; do
 	if [[ "${1:0:2}" != "--" || "${1:2}" == "${arg}" ]]; then
 		echo "Error: argument not understood: ${1}"
 		usage
-		exit 255
+		return 255
 	fi
 	arg="${1:2}"
 	machine_arg=$(human_to_machine_arg "${arg}")
@@ -36,7 +36,7 @@ while [[ "$1" != "" ]]; do
 		if [[ "${understood_args[$i]}" == "${machine_arg}" ]]; then
 			if [[ "$2" == "" ]]; then
 				echo "Error: argument ${1} requires another argument"
-				exit 255
+				return 255
 			fi
 			second_arg=$(echo "${2}" | sed "s|'|'"'"'"'"'"'"'|g")
 			eval "${machine_arg}"'='"'${second_arg}'"
@@ -45,4 +45,13 @@ while [[ "$1" != "" ]]; do
 	done
 done
 
-
+function check_for_required_args() {
+	local understood_args
+	understood_args=( "${@}" )
+	for i in "${understood_args[@]}"; do
+		if [[ $(eval echo '${'"${i}"'}') == "" ]]; then
+			echo "Error: --"$(machine_to_human_arg "${i}")" required!"
+			return 255
+		fi
+	done
+}

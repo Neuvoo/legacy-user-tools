@@ -1,59 +1,21 @@
 #!/bin/bash
 
-source "${MODULES_BASEDIR}/lib"
+understood_args=( "BUILD_ACTION" "CPV" "BUILD_DIR" "STAGING_SSH_URI" "STAGING_SSH_PATH" "MIRROR_SSH_URI" "MIRROR_SSH_PATH" "MIRROR_HTTP_URI" "LOCK_SSH_URI" "LOCK_SSH_PATH" )
 
-understood_args=( "ACTION" "CPV" "BUILD_DIR" "STAGING_SSH_URI" "STAGING_SSH_PATH" "MIRROR_SSH_URI" "MIRROR_SSH_PATH" "MIRROR_HTTP_URI" "LOCK_SSH_URI" "LOCK_SSH_PATH" )
+source "${LIB_BASEDIR}/variable-args" || exit $?
 
-source "${LIB_BASEDIR}/variable-args"
+if [[ "${BUILD_ACTION}" == "" ]]; then
+	BUILD_ACTION="build"
+	echo "--$(machine_to_human_arg BUILD_ACTION) is empty, defaulting to: ${BUILD_ACTION}"
+fi
 
-for i in "${understood_args[@]}"; do
-	if [[ $(eval echo '${'"${i}"'}') == "" ]]; then
-		if [[ "${i}" == "ACTION" ]]; then
-			ACTION="add"
-			echo "--action empty, using default: ${ACTION}"
-		else
-			echo "Error: --"$(machine_to_human_arg "${i}")" required!"
-			exit 255
-		fi
-	fi
-done
+check_for_required_args "${understood_args[@]}" || exit $?
 
-exit
-
-binpkg_dir="/binpkgs"
-dist_dir="/tmp/distdir"
 rsync_args=( -cav --progress --delete --exclude='.lock' --exclude='.staging' )
 
-trap 'takedown_chroot "${BUILD_DIR}"
-      if [[ "${lock_acquired}" == "1" ]]; then unlock_mirror "${LOCK_SSH_URI}" "${LOCK_SSH_PATH}"; fi' 0
-# the following handler will exit the script on receiving these signals
-# the trap on "0" (EXIT) from above will be triggered by this trap's "exit" command
-trap 'echo "Killed." >&2
-      exit 1' 1 2 3 15
+"${MODULES_BASEDIR}/_exec-module" mirror-lock --mirror-action lock --lock-ssh-uri "${LOCK_SSH_URI}" --lock-ssh-path "${LOCK_SSH_PATH}" || exit $?
 
-lock_mirror "${LOCK_SSH_URI}" "${LOCK_SSH_PATH}" || exit $?
-lock_acquired="1"
-
-setup_chroot "${BUILD_DIR}" || exit $?
-
-cat > "${BUILD_DIR}/chroot.run" <<EOF
-#!/bin/bash
-env-update && source /etc/profile
-EOF
-
-cat "${modules_basedir}/lib" >> "${BUILD_DIR}/chroot.run"
-
-cat >> "${BUILD_DIR}/chroot.run" <<EOF
-export PKGDIR="${binpkg_dir}"
-export DISTDIR="${dist_dir}"
-export PORTAGE_BINHOST="${MIRROR_HTTP_URI}"
-export USE="bindist"
-
-# Initial setup required before any action
-which layman 2>&1 > /dev/null && vrun layman -S || exit \$?
-vrun emerge --sync -v # || exit \$? # squashfs-hooks messes up this exit thing. :/
-vrun emerge -GuDNv world system || exit \$?
-EOF
+"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action init || exit $?
 
 # Bug: there has to be at least one argument here
 emerge_args=( -v )
@@ -65,49 +27,35 @@ if [[ "${once}" == "1" ]]; then
 	emerge_args+=( -1 )
 fi
 
-if [[ "${ACTION}" == "shell" ]]; then
-	cat >> "${BUILD_DIR}/chroot.run" <<EOF
+if [[ "${BUILD_ACTION}" == "shell" ]]; then
+	"${MODULES_BASEDIR}/_exec-module" setup_chroot --chroot-action append_stdin <<EOF
 echo "You can now edit ${BUILD_DIR}/.* files"
 echo "Exit when finished"
 vrun bash --login
 EOF
 
-elif [[ "${ACTION}" == "add" ]]; then
-	cat >> "${BUILD_DIR}/chroot.run" <<EOF
+elif [[ "${BUILD_ACTION}" == "build" ]]; then
+	"${MODULES_BASEDIR}/_exec-module" setup_chroot --chroot-action append_stdin <<EOF
 vrun emerge "${emerge_args[@]}" -bguDN "${CPV}" || exit \$?
 vrun revdep-rebuild || exit \$?
 EOF
 
-elif [[ "${ACTION}" == "remove" ]]; then
-	cat >> "${BUILD_DIR}/chroot.run" <<EOF
+elif [[ "${BUILD_ACTION}" == "remove" ]]; then
+	"${MODULES_BASEDIR}/_exec-module" setup_chroot --chroot-action append_stdin <<EOF
 vrun emerge "${emerge_args[@]}" --depclean "${CPV}" || exit \$?
 vrun revdep-rebuild || exit \$?
 EOF
 
 else
-	echo "Error: action not understood: ${ACTION}"
+	echo "Error: action not understood: ${BUILD_ACTION}"
 	usage	
 	exit 255
 fi
 
-# Sync mirror to local
-vrun rsync "${rsync_args[@]}" "${MIRROR_SSH_URI}":/"${MIRROR_SSH_PATH}"/ "${BUILD_DIR}"/"${binpkg_dir}"/ || exit $?
-
-# Copy mirror's files into place
-vrun cp -v "${BUILD_DIR}"/"${binpkg_dir}/.world" "${BUILD_DIR}"/var/lib/portage/world || exit $?
-vrun rsync --delete -av "${BUILD_DIR}"/"${binpkg_dir}/.portage/" "${BUILD_DIR}"/etc/portage/ || exit $?
+"${MODULES_BASEDIR}/_exec-module" sync --sync-action down --mirror-ssh-uri "${MIRROR_SSH_URI}" --mirror-ssh-path "${MIRROR_SSH_PATH}" --staging-ssh-uri "${STAGING_SSH_URI}" --staging-ssh-path "${STAGING_SSH_PATH}" --sync-dir "${BUILD_DIR}/binpkgs" --build-root-dir "${BUILD_DIR}" --build-binpkg-dir "${BUILD_DIR}/binpkgs" || exit $?
 
 echo "Entering chroot"
-vrun chroot "${BUILD_DIR}" /bin/bash /chroot.run; exit_status="$?"
+"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action execute; exit_status="$?"
 echo "Exiting chroot"
 
 if [[ "${exit_status}" != "0" ]]; then exit "${exit_status}"; fi
-
-# Copy file into local mirror copy
-vrun cp -v "${BUILD_DIR}"/var/lib/portage/world "${BUILD_DIR}"/"${binpkg_dir}"/.world || exit $?
-vrun rsync --delete -av "${BUILD_DIR}"/etc/portage/ "${BUILD_DIR}"/"${binpkg_dir}/.portage/" || exit $?
-
-# Sync local mirror copy to staging
-vrun rsync "${rsync_args[@]}" "${BUILD_DIR}"/"${binpkg_dir}"/ "${STAGING_SSH_URI}":/"${STAGING_SSH_PATH}"/ || exit $?
-# Copy staging into place on mirror
-vrun ssh "${MIRROR_SSH_URI}" rsync "${rsync_args[@]}" "${STAGING_SSH_PATH}"/ "${MIRROR_SSH_PATH}" || exit $?

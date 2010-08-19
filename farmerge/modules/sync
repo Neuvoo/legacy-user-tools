@@ -1,0 +1,52 @@
+#!/bin/bash
+
+understood_args=( "SYNC_ACTION", "MIRROR_SSH_URI", "MIRROR_SSH_PATH", "STAGING_SSH_URI", "STAGING_SSH_PATH", "SYNC_DIR", "BUILD_ROOT_DIR", "BUILD_BINPKG_DIR", "RSYNC_ARGS" )
+source "${LIB_BASEDIR}/variable-args" || exit $?
+if [[ "${RSYNC_ARGS}" == "" ]]; then
+	# TODO: make it so we don't have these defaults here
+	RSYNC_ARGS="-cav --progress --delete --exclude='.lock' --exclude='.staging'"
+	echo "--$(machine_to_human_arg RSYNC_ARGS) is empty, defaulting to ${RSYNC_ARGS}"
+fi
+check_for_required_args "${understood_args[@]}"
+
+function down() {
+	add_hook exit '50-sync-'"${MIRROR_SSH_URI}" "${MODULES_BASEDIR}/_exec-module" sync --sync-action up --mirror-ssh-uri "${MIRROR_SSH_URI}" --mirror-ssh-path "${MIRROR_SSH_PATH}" --staging-ssh-uri "${STAGING_SSH_URI}" --staging-ssh-path "${STAGING_SSH_PATH}" --sync-dir "${SYNC_DIR}" --build-root-dir "${BUILD_ROOT_DIR}" --build-binpkg-dir "${BUILD_BINPKG_DIR}" --rsync-args "${RSYNC_ARGS}"; exit_code="$?"
+	[[ "${exit_code}" == "254" ]] && return
+	[[ "${exit_code}" != "0" ]] && return "${exit_code}"
+	
+	# Sync mirror to local
+	vrun rsync "${RSYNC_ARGS}" "${MIRROR_SSH_URI}:/${MIRROR_SSH_PATH}/" "${SYNC_DIR}" || return $?
+
+	# Copy mirror's files into place
+	vrun cp -v "${SYNC_DIR}/.world" "${BUILD_ROOT_DIR}/var/lib/portage/world" || return $?
+	vrun rsync --delete -av "${SYNC_DIR}/.portage/" "${BUILD_ROOT_DIR}/etc/portage/" || return $?
+	
+	# TODO: support BUILD_BINPKG_DIR
+}
+
+function up() {
+	delete_hook exit '50-sync-'"${MIRROR_SSH_URI}"; exit_code="$?"
+	[[ "${exit_code}" == "254" ]] && return
+	[[ "${exit_code}" != "0" ]] && return "${exit_code}"
+	
+	# Copy file into local mirror copy
+	vrun cp -v "${BUILD_ROOT_DIR}/var/lib/portage/world" "${SYNC_DIR}/.world" || return $?
+	vrun rsync --delete -av "${BUILD_ROOT_DIR}/etc/portage/" "${SYNC_DIR}/.portage/" || return $?
+	# TODO: support BUILD_BINPKG_DIR
+
+	# Sync local mirror copy to staging
+	vrun rsync "${RSYNC_ARGS}" "${BUILD_ROOT_DIR}/" "${STAGING_SSH_URI}:/${STAGING_SSH_PATH}/" || return $?
+	# Copy staging into place on mirror
+	vrun ssh "${MIRROR_SSH_URI}" rsync "${RSYNC_ARGS}" "${STAGING_SSH_PATH}/" "${MIRROR_SSH_PATH}" || return $?
+	# TODO: support differing MIRROR_SSH_URI and STAGING_SSH_URI
+}
+
+case "${SYNC_ACTION}" in
+	down | up)
+		"${SYNC_ACTION}" || exit $?
+		;;
+	*)
+		echo "Error: action not understood: ${SYNC_ACTION}" >&2
+		exit 255
+		;;
+done

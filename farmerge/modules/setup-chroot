@@ -1,76 +1,73 @@
 #!/bin/bash
 
-source "${MODULES_BASEDIR}/lib"
+understood_args=( "CHROOT_ACTION" "BUILD_DIR", "BUILD_BINPKG_SUBDIR", "BUILD_DIST_SUBDIR" )
+source "${LIB_BASEDIR}/variable-args" || exit $?
+check_for_required_args "${understood_args[@]}"
 
-function usage() {
-	echo "Module usage: --build-dir [/path/to/chroot/] --tarball [/path/to/tarball] --timezone-path [/usr/share/zoneinfo/timezone] [--tarball-is-stage5]"
+source "${LIB_BASEDIR}/hooks"
+
+function unmount() {
+	delete_hook exit '50-unmount-'"${BUILD_DIR}"; exit_code="$?"
+	[[ "${exit_code}" == "254" ]] && return
+	[[ "${exit_code}" != "0" ]] && return "${exit_code}"
+	
+	vrun umount "${BUILD_DIR}"/dev/pts && \
+	vrun umount "${BUILD_DIR}"/sys && \
+	vrun umount "${BUILD_DIR}"/proc
+	return $?
 }
 
-while [[ "$1" != "" ]]; do
-	if [[ "$1" == "--build-dir" ]]; then
-		if [[ "$2" == "" ]]; then
-			usage
-			exit 255
-		fi
-		build_dir="${2}"
-		shift
-	elif [[ "$1" == "--tarball" ]]; then
-		if [[ "$2" == "" ]]; then
-			usage
-			exit 255
-		fi
-		tarball="${2}"
-		shift
-	elif [[ "$1" == "--timezone-path" ]]; then
-		if [[ "$2" == "" ]]; then
-			usage
-			exit 255
-		fi
-		timezone_path="${2}"
-		shift
-	elif [[ "$1" == "--tarball-is-stage5" ]]; then
-		tarball_is_stage5="1"
-	else
-		echo "$1 not understood"
-		usage
+function mount() {
+	add_hook exit '50-unmount-'"${BUILD_DIR}" "${MODULES_BASEDIR}/_exec-module" setup-chroot --unmount --build-dir "${BUILD_DIR}"; exit_code="$?"
+	[[ "${exit_code}" == "254" ]] && return
+	[[ "${exit_code}" != "0" ]] && return "${exit_code}"
+
+	vrun mount --bind /proc "${BUILD_DIR}"/proc && \
+	vrun mount --bind /sys "${BUILD_DIR}"/sys && \
+	vrun mount --bind /dev/pts "${BUILD_DIR}"/dev/pts && \
+	vrun cp -L /etc/resolv.conf "${BUILD_DIR}"/etc/
+	
+	return $?
+}
+
+function init() {
+	mount || return $?
+
+	cat > "${BUILD_DIR}/chroot.run" <<EOF
+#!/bin/bash
+env-update && source /etc/profile
+EOF
+
+cat "${LIB_BASEDIR}/output" >> "${BUILD_DIR}/chroot.run"
+
+cat >> "${BUILD_DIR}/chroot.run" <<EOF
+export PKGDIR="${BUILD_BINPKG_SUBDIR}"
+export DISTDIR="${BUILD_DIST_SUBDIR}"
+export PORTAGE_BINHOST="${MIRROR_HTTP_URI}"
+export USE="bindist"
+
+# Initial setup required before any action
+which layman 2>&1 > /dev/null && vrun layman -S || exit \$?
+vrun emerge --sync -v # || exit \$? # squashfs-hooks messes up this exit thing. :/
+vrun emerge -GuDNv world system || exit \$?
+EOF
+}
+
+function append_stdin() {
+	cat >> "${BUILD_DIR}/chroot.run" || return $?
+}
+
+function execute() {
+	echo "Entering chroot to launch script '${BUILD_DIR}/chroot.run'..."
+	( chroot "${BUILD_DIR}" /bin/bash /chroot.run ) || return $?
+}
+
+case "${CHROOT_ACTION}" in
+	init | mount | unmount | append_stdin | execute)
+		"${CHROOT_ACTION}" || exit $?
+		;;
+	*)
+		echo "Error: action not understood: ${CHROOT_ACTION}" >&2
 		exit 255
-	fi
-	shift
+		;;
 done
-
-if [[ ! -n "${build_dir}" ]]; then
-	echo "--build-dir required, but not given"
-	usage
-	exit 255
-fi
-if [[ ! -n "${tarball}" ]]; then
-	echo "--tarball required, but not given"
-	usage
-	exit 255
-fi
-if [[ ! -n "${timezone_path}" ]]; then
-	echo "--timezone-path required, but none given"
-	usage
-	exit 255
-fi
-
-if [[ "${tarball}" == *stage5* ]]; then
-	tarball_is_stage5="1"
-else
-	echo "WARNING: this may not be a stage5 tarball!"
-	echo "Please cancel this if you are not using a stage5 tarball, unless you know what you're doing!"
-	sleep 5
-fi
-
-if [[ ! -n "${tarball_is_stage5}" ]]; then
-	echo "--tarball ought to reference a stage5 tarball, or whichever has the most packages."
-	echo "If you are certain the tarball specified is a the right one, append --tarball-is-stage5 to arguments"
-	usage
-	exit 255
-fi
-
-vrun mkdir "${build_dir}" && \
-vrun tar -xvpf "${tarball}" -C "${build_dir}" && \
-vrun chmod +rx "${build_dir}" && \
-vrun ln -sf "${timezone_path}" "${build_dir}/etc/localtime"
-exit $?
