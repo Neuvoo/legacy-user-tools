@@ -14,6 +14,8 @@ function unmount() {
 	vrun umount "${BUILD_DIR}"/dev/pts || return $?
 	vrun umount "${BUILD_DIR}"/sys || return $?
 	vrun umount "${BUILD_DIR}"/proc || return $?
+	
+	execute_hooks "chroot-unmount" || return $?
 }
 
 function mount() {
@@ -25,6 +27,8 @@ function mount() {
 	vrun mount --bind /sys "${BUILD_DIR}"/sys || return $?
 	vrun mount --bind /dev/pts "${BUILD_DIR}"/dev/pts || return $?
 	vrun cp -L /etc/resolv.conf "${BUILD_DIR}"/etc/ || return $?
+	
+	execute_hooks "chroot-mount" || return $?
 }
 
 function init() {

@@ -10,6 +10,7 @@ fi
 check_for_required_args "${understood_args[@]}" || exit $?
 
 source "${LIB_BASEDIR}/output"
+
 # TODO: rsync_args needs to be a config option
 rsync_args=( -cav --progress --delete --exclude='.lock' --exclude='.staging' )
 
@@ -58,4 +59,9 @@ echo "Entering chroot"
 "${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action execute --build-binpkg-subdir "/binpkgs" --build-dist-subdir "/tmp/distdir"; exit_status="$?"
 echo "Exiting chroot"
 
-if [[ "${exit_status}" != "0" ]]; then exit "${exit_status}"; fi
+if [[ "${exit_status}" != "0" ]]; then
+	execute_hooks "build-failure" || exit $?
+	exit "${exit_status}"
+fi
+
+execute_hooks "build-success" || exit $?

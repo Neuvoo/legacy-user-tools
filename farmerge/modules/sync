@@ -26,6 +26,8 @@ function down() {
 	vrun rsync --delete -av "${SYNC_DIR}/.portage/" "${BUILD_ROOT_DIR}/etc/portage/" || return $?
 	
 	# TODO: support BUILD_BINPKG_DIR
+	
+	execute_hooks "sync-down" || return $?
 }
 
 function up() {
@@ -42,6 +44,8 @@ function up() {
 	# Copy staging into place on mirror
 	vrun ssh "${MIRROR_SSH_URI}" rsync "${RSYNC_ARGS[@]}" "${STAGING_SSH_PATH}/" "${MIRROR_SSH_PATH}" || return $?
 	# TODO: support differing MIRROR_SSH_URI and STAGING_SSH_URI
+	
+	execute_hooks "sync-up" || return $?
 }
 
 case "${SYNC_ACTION}" in

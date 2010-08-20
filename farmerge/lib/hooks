@@ -1,6 +1,6 @@
 #!/bin/bash
 
-understood_stages=( "exit" )
+understood_stages=( "build-failure" "build-success" "chroot-mount" "chroot-unmount" "exit" "sync-up" "sync-down" )
 
 hooks_basedir="${TMP_BASEDIR}/hooks"
 
