@@ -36,6 +36,10 @@ while [[ "$1" != "" ]]; do
 	fi
 	arg="${1:2}"
 	machine_arg=$(human_to_machine_arg "${arg}")
+	if [[ "${arg}" == "help" ]]; then
+		usage
+		return 255
+	fi
 	for ((i = 0; i < "${#understood_args[@]}"; i++)); do
 		if [[ "${understood_args[$i]}" == "${machine_arg}" ]]; then
 			if [[ "$2" == "" ]]; then

@@ -89,8 +89,6 @@ function execute_hooks () {
 			echo "Warning: skipping non-file: ${i}" >&2
 		fi
 		( "${i}" ) || some_failed="1"
-		echo "Removing old hook file: ${i}"
-		rm "${i}"
 	done
 	
 	if [[ "${some_failed}" == "1" ]]; then

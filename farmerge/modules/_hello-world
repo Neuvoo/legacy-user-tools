@@ -1,0 +1,32 @@
+#!/bin/bash
+
+understood_args=( "SAMPLE_ACTION" "HELLO_WORLD_MSG" )
+source "${LIB_BASEDIR}/variable-args" || exit $?
+if [[ "${SAMPLE_ACTION}" == "" ]]; then
+	SAMPLE_ACTION="init"
+	echo "--$(machine_to_human_arg SAMPLE_ACTION) empty, using default: ${SAMPLE_ACTION}"
+fi
+check_for_required_args "${understood_args[@]}" || exit $?
+
+source "${LIB_BASEDIR}/hooks"
+source "${LIB_BASEDIR}/output"
+
+function hello_world() {
+	delete_hook exit "hello-world-$$"; exit_code="$?"
+	[[ "${exit_code}" != "254" ]] && [[ "${exit_code}" != "0" ]] && return "${exit_code}"
+	
+	echo "${HELLO_WORLD_MSG}"
+}
+
+case "${SAMPLE_ACTION}" in
+	init)
+		add_hook exit "hello-world-$$" "${MODULES_BASEDIR}/_exec-module" hello-world --sample-action sayit --hello-world-msg "${HELLO_WORLD_MSG}"; exit_code="$?"
+		[[ "${exit_code}" == "254" ]] && exit
+		[[ "${exit_code}" != "0" ]] && exit "${exit_code}"
+		exit
+		;;
+	sayit)
+		hello_world || exit $?
+		exit
+		;;
+esac

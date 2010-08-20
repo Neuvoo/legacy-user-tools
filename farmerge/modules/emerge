@@ -1,11 +1,26 @@
 #!/bin/bash
 
-understood_args=( "BUILD_ACTION" "CPV" "BUILD_DIR" "STAGING_SSH_URI" "STAGING_SSH_PATH" "MIRROR_SSH_URI" "MIRROR_SSH_PATH" "MIRROR_HTTP_URI" "LOCK_SSH_URI" "LOCK_SSH_PATH" )
+# Handles building packages and completing other emerge operations.
+# Also can provide the same chrooted bash shell emerge uses.
+#
+# emerge action: can be shell, build, or remove. Building adds to the world file
+#                and removing removes from the world file.
+# cpv: the category/package-version to build or remove. Can be any emerge-
+#      recognized atom.
+# build dir: the directory where the chroot is located and the building happens
+# staging ssh uri: the user@host URI to the staging host.
+# staging ssh path: the /path/to/staging on the staging host.
+# mirror ssh uri: the user@host URI to the mirror host.
+# mirror ssh path: the /path/to/mirror on the mirror host.
+# lock ssh uri: the user@host for the lock host.
+# lock ssh path: the /path/to/locks on the lock host.
+
+understood_args=( "EMERGE_ACTION" "CPV" "BUILD_DIR" "STAGING_SSH_URI" "STAGING_SSH_PATH" "MIRROR_SSH_URI" "MIRROR_SSH_PATH" "MIRROR_HTTP_URI" "LOCK_SSH_URI" "LOCK_SSH_PATH" )
 
 source "${LIB_BASEDIR}/variable-args" || exit $?
-if [[ "${BUILD_ACTION}" == "" ]]; then
-	BUILD_ACTION="build"
-	echo "--$(machine_to_human_arg BUILD_ACTION) is empty, defaulting to: ${BUILD_ACTION}"
+if [[ "${EMERGE_ACTION}" == "" ]]; then
+	EMERGE_ACTION="build"
+	echo "--$(machine_to_human_arg EMERGE_ACTION) is empty, defaulting to: ${EMERGE_ACTION}"
 fi
 check_for_required_args "${understood_args[@]}" || exit $?
 
@@ -16,6 +31,7 @@ rsync_args=( -cav --progress --delete --exclude='.lock' --exclude='.staging' )
 
 "${MODULES_BASEDIR}/_exec-module" mirror-lock --mirror-action lock --lock-ssh-uri "${LOCK_SSH_URI}" --lock-ssh-path "${LOCK_SSH_PATH}" || exit $?
 
+# TODO: internally-defined binpkg and distdir locations need to be configurable
 "${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action init --build-binpkg-subdir "/binpkgs" --build-dist-subdir "/tmp/distdir" || exit $?
 
 # Bug: there has to be at least one argument here
@@ -28,27 +44,27 @@ if [[ "${once}" == "1" ]]; then
 	emerge_args+=( -1 )
 fi
 
-if [[ "${BUILD_ACTION}" == "shell" ]]; then
+if [[ "${EMERGE_ACTION}" == "shell" ]]; then
 	"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action append_stdin --build-binpkg-subdir "/binpkgs" --build-dist-subdir "/tmp/distdir" <<EOF || exit $?
 echo "You can now edit ${BUILD_DIR}/.* files"
 echo "Exit when finished"
 vrun bash --login
 EOF
 
-elif [[ "${BUILD_ACTION}" == "build" ]]; then
+elif [[ "${EMERGE_ACTION}" == "build" ]]; then
 	"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action append_stdin --build-binpkg-subdir "/binpkgs" --build-dist-subdir "/tmp/distdir"<<EOF || exit $?
 vrun emerge "${emerge_args[@]}" -bguDN "${CPV}" || exit \$?
 vrun revdep-rebuild || exit \$?
 EOF
 
-elif [[ "${BUILD_ACTION}" == "remove" ]]; then
+elif [[ "${EMERGE_ACTION}" == "remove" ]]; then
 	"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action append_stdin --build-binpkg-subdir "/binpkgs" --build-dist-subdir "/tmp/distdir"<<EOF || exit $?
 vrun emerge "${emerge_args[@]}" --depclean "${CPV}" || exit \$?
 vrun revdep-rebuild || exit \$?
 EOF
 
 else
-	echo "Error: action not understood: ${BUILD_ACTION}"
+	echo "Error: action not understood: ${EMERGE_ACTION}"
 	usage	
 	exit 255
 fi

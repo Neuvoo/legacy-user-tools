@@ -1,1 +1,16 @@
-Not yet production ready.
+== Usage ==
+Execute "farmerge.sh --help" for global usage.
+
+Per-module usage can be retrieved by executing a module with the "--help"
+argument. Currently, most modules lack and useful usage. (See "Bugs".)
+
+== More Information ==
+We maintain a detailed manual for farmerge on our wiki:
+http://neuvoo.org/wiki/index.php?title=Farmerge
+
+== Bugs ==
+This list may be incomplete. See http://neuvoo.org/bugs for a complete list.
+ * Sync module is very much locked down to Neuvoo setup. Making it flexible is
+   not going to be super easy.
+ * Modules lack very helpful usage. Until that support is added, detailed usage
+   is documented inside each module.

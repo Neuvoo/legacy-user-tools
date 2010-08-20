@@ -8,6 +8,8 @@ function usage() {
 	module_list "${MODULES_BASEDIR}" | while read module; do
 		echo " * ${module}"
 	done
+	echo
+	echo "Execute a module with --help to retrieve module-specific usage."
 }
 
 export BASEDIR="$(dirname $0)"
@@ -18,7 +20,6 @@ export TMP_BASEDIR="$(mktemp -d)"
 
 trap 'source ${LIB_BASEDIR}/hooks
       echo
-      echo
       echo "Pre-exit cleaning..."
       execute_hooks exit
       rm -r "${TMP_BASEDIR}"' 0
@@ -27,7 +28,7 @@ trap 'source ${LIB_BASEDIR}/hooks
 trap 'echo "Killed." >&2
       exit 1' 1 2 3 15
 
-source "${LIB_BASEDIR}/modules"
+source "${LIB_BASEDIR}/modules" || exit $?
 
 unset module args device
 args=( )
@@ -36,6 +37,9 @@ while [[ "$1" != "" ]]; do
 		if [[ "$1" == "--device" ]]; then
 			device="${2}"
 			shift
+		elif [[ "$1" == "--help" ]]; then
+			usage
+			exit 255
 		elif [[ "$1" == "--" ]]; then
 			module="${2}"
 			shift
