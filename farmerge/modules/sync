@@ -13,11 +13,6 @@ source "${LIB_BASEDIR}/hooks"
 source "${LIB_BASEDIR}/output"
 
 function down() {
-	# TODO: add --rsync-args
-	add_hook exit '50-sync-'"${MIRROR_SSH_URI}" "${MODULES_BASEDIR}/_exec-module" sync --sync-action up --mirror-ssh-uri "${MIRROR_SSH_URI}" --mirror-ssh-path "${MIRROR_SSH_PATH}" --staging-ssh-uri "${STAGING_SSH_URI}" --staging-ssh-path "${STAGING_SSH_PATH}" --sync-dir "${SYNC_DIR}" --build-root-dir "${BUILD_ROOT_DIR}" --build-binpkg-dir "${BUILD_BINPKG_DIR}"; exit_code="$?"
-	[[ "${exit_code}" == "254" ]] && return
-	[[ "${exit_code}" != "0" ]] && return "${exit_code}"
-	
 	# Sync mirror to local
 	vrun rsync "${RSYNC_ARGS[@]}" "${MIRROR_SSH_URI}:/${MIRROR_SSH_PATH}/" "${SYNC_DIR}" || return $?
 
@@ -31,9 +26,6 @@ function down() {
 }
 
 function up() {
-	delete_hook exit '50-sync-'"${MIRROR_SSH_URI}"; exit_code="$?"
-	[[ "${exit_code}" != "254" ]] && [[ "${exit_code}" != "0" ]] && return "${exit_code}"
-	
 	# Copy file into local mirror copy
 	vrun cp -v "${BUILD_ROOT_DIR}/var/lib/portage/world" "${SYNC_DIR}/.world" || return $?
 	vrun rsync --delete -av "${BUILD_ROOT_DIR}/etc/portage/" "${SYNC_DIR}/.portage/" || return $?

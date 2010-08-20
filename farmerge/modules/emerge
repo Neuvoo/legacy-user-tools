@@ -25,6 +25,7 @@ fi
 check_for_required_args "${understood_args[@]}" || exit $?
 
 source "${LIB_BASEDIR}/output"
+source "${LIB_BASEDIR}/hooks"
 
 # TODO: rsync_args needs to be a config option
 rsync_args=( -cav --progress --delete --exclude='.lock' --exclude='.staging' )
@@ -81,3 +82,5 @@ if [[ "${exit_status}" != "0" ]]; then
 fi
 
 execute_hooks "build-success" || exit $?
+
+"${MODULES_BASEDIR}/_exec-module" sync --sync-action up --mirror-ssh-uri "${MIRROR_SSH_URI}" --mirror-ssh-path "${MIRROR_SSH_PATH}" --staging-ssh-uri "${STAGING_SSH_URI}" --staging-ssh-path "${STAGING_SSH_PATH}" --sync-dir "${BUILD_DIR}/binpkgs" --build-root-dir "${BUILD_DIR}" --build-binpkg-dir "${BUILD_DIR}/binpkgs" || exit $?

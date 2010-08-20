@@ -7,7 +7,7 @@ check_for_required_args "${understood_args[@]}" || exit $?
 source "${LIB_BASEDIR}/hooks"
 
 function lock () {
-	add_hook exit '50-lock-'"${LOCK_SSH_URI}" "${MODULES_BASEDIR}/_exec-module" mirror-lock --mirror-action unlock --lock-ssh-uri "${LOCK_SSH_URI}" --lock-ssh-path "${LOCK_SSH_PATH}"; exit_code="$?"
+	add_hook exit '75-lock-'"${LOCK_SSH_URI}" "${MODULES_BASEDIR}/_exec-module" mirror-lock --mirror-action unlock --lock-ssh-uri "${LOCK_SSH_URI}" --lock-ssh-path "${LOCK_SSH_PATH}"; exit_code="$?"
 	[[ "${exit_code}" == "254" ]] && return
 	[[ "${exit_code}" != "0" ]] && return "${exit_code}"
 
@@ -22,7 +22,7 @@ function lock () {
 }
 
 function unlock () {
-	delete_hook exit '50-lock-'"${LOCK_SSH_URI}"; exit_code="$?"
+	delete_hook exit '75-lock-'"${LOCK_SSH_URI}"; exit_code="$?"
 	[[ "${exit_code}" != "254" ]] && [[ "${exit_code}" != "0" ]] && return "${exit_code}"
 	
 	echo "Unlocking mirror..."
