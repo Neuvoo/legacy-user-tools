@@ -1,16 +1,30 @@
 #!/bin/bash
 
+# Before sourcing this file, define understood_args to be a list of arguments
+# you want to be available in the environment. For example:
+# understood_args=( "PATH_TO_STUFF" "ACTION_TO_TAKE" )
+# ...will translate to a usage of --path-to-stuff <path-to-stuff> --action-to-take <action-to-take>
+
+# As soon as this file is sourced, arguments are processed, and errors reported
+# via return code. Use check_for_required_args to make sure certain required
+# arguments were passed.
+
 # TODO: allow for "submodule" usage
 # TODO: allow for per-module descriptions in usage
 
+# Translates --sample-arg to SAMPLE_ARG (or similar)
+# Usage: <argument to translate>
 function human_to_machine_arg() {
 	echo "${@}" | tr '[:lower:]' '[:upper:]' | tr - _
 }
 
+# Translates SAMPLE_ARG to --sample-arg (or similar)
+# Usage: <argument to translate>
 function machine_to_human_arg() {
 	echo "${@}" | tr '[:upper:]' '[:lower:]' | tr _ -
 }
 
+# Prints the current module's usage
 function usage() {
 	echo -n "Module usage: "
 	for i in "${understood_args[@]}"; do
@@ -53,6 +67,8 @@ while [[ "$1" != "" ]]; do
 	done
 done
 
+# Checks to see if the given list of arguments were passed by the user.
+# Usage: <arg 1> <arg 2> ...
 function check_for_required_args() {
 	local understood_args
 	understood_args=( "${@}" )

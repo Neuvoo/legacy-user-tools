@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Announces verbosely the command before running it.
+# Usage: vrun <command> <arguments>
 function vrun () {
 	local args
 	args=( "${@}" )

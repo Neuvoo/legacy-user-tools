@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Spits out a list of visible modules to stdout.
+# Usage: module_list </path/to/modules>
 function module_list() {
 	local modules_base_dir
 	modules_base_dir="${1}"

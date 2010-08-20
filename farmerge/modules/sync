@@ -1,5 +1,21 @@
 #!/bin/bash
 
+# Handles syncing to and from the remote servers into the appropriate places in
+# the build directory.
+
+# Usage:
+# sync action: can be "down" or "up", but not in between. ;)
+# mirror ssh uri: the user@host uri where the mirror is located
+# mirror ssh path: the /path/to/mirror on the mirror host
+# staging ssh uri: the user@host uri where the staged mirror is located
+# staging ssh path: the /path/to/staging on the staged mirror host
+# sync dir: the directory where everything should be downloaded to
+# build root dir: the base directory for /etc/portage and /var/lib/portage and
+# other things like that.
+# build binpkgs dir: the directory where binpkgs are to be placed. Should be
+# reachable by chroot as well.
+# rsync args: specify your own list of rsync arguments for syncing. NOT WORKING!
+
 understood_args=( "SYNC_ACTION" "MIRROR_SSH_URI" "MIRROR_SSH_PATH" "STAGING_SSH_URI" "STAGING_SSH_PATH" "SYNC_DIR" "BUILD_ROOT_DIR" "BUILD_BINPKG_DIR" "RSYNC_ARGS" )
 source "${LIB_BASEDIR}/variable-args" || exit $?
 if [[ "${RSYNC_ARGS[@]}" == "" ]]; then

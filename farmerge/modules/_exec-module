@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Handles launching a module. Very easy to use:
+# _exec-module <module name> [<module arg 1> <module arg 2> ...]
+
 module="${1}"
 shift
 

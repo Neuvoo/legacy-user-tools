@@ -13,6 +13,7 @@ for i in "${understood_stages[@]}"; do
 	fi
 done
 
+# Usage: add_hook <stage> <id unique to this particular hook> <bash code>
 function add_hook () {
 	local stage hook_uid exec
 	stage="${1}"; shift
@@ -49,6 +50,7 @@ EOF
 	return 255
 }
 
+# Usage: delete_hook <stage> <id unique to this particular hook>
 function delete_hook () {
 	local stage hook_uid
 	stage="${1}"; shift
@@ -68,6 +70,7 @@ function delete_hook () {
 	fi
 }
 
+# Usage: execute_hooks <stage>
 function execute_hooks () {
 	local stage some_failed
 	some_failed="0"

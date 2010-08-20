@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Work in progress.
+
 function module_catch_usage() {
 	echo "Allows a user to catch a failure farmerge attempts to clean up and quit."
 	echo 

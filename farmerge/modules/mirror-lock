@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# Handles locking and unlocking the mirror so race conditions are eliminated
+# We'd like to be able to do per-package locking, but at the moment that is not
+# possible.
+
+# Usage:
+# mirror action: can be either lock or unlock.
+# lock ssh uri: the user@host uri where the lock files are
+# lock ssh path: /path/to/locks/ on the lock files host
+
+# Lock will be ignored if already locked.
+
 understood_args=( "MIRROR_ACTION" "LOCK_SSH_URI" "LOCK_SSH_PATH" ) 
 source "${LIB_BASEDIR}/variable-args" || exit $?
 check_for_required_args "${understood_args[@]}" || exit $?
@@ -16,7 +27,7 @@ function lock () {
 	if [[ -n "$output" ]]; then
 		echo "Error acquiring lock:" >&2
 		echo "$output" >&2
-		delete_hook exit '50-lock-'"${LOCK_SSH_URI}"
+		delete_hook exit '75-lock-'"${LOCK_SSH_URI}"
 		return 1
 	fi
 }

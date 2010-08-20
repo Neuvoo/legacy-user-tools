@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# Handles mounting, unmounting, and launching into a chroot
+# Usage:
+# chroot action: can be mount, unmount, init, append_stdin, or execute.
+#	mount makes sure things like /dev are mounted. /usr/portage is out of scope.
+#	unmount makes sure the mount command is undone.
+#	init initializes the chroot so it has a basic framework for launching
+#	append_stdin is how you'd add more code to the chroot launch. Pass code via stdin.
+#	execute launches the chroot
+# build dir: the location of the chroot, where the building happens
+# build binpkg subdir: the binpkg directory to be passed to portage
+# build dist subdir: the distdir directory to be passed to portage
+
 understood_args=( "CHROOT_ACTION" "BUILD_DIR" "BUILD_BINPKG_SUBDIR" "BUILD_DIST_SUBDIR" )
 source "${LIB_BASEDIR}/variable-args" || exit $?
 check_for_required_args "${understood_args[@]}" || exit $?

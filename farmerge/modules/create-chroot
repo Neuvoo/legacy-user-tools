@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Creates chroots for the first time, usually when installing farmerge.
+# Usage:
+# build dir: the place where the chroot will live
+# tarball: the tarball that contains the stage5
+# timezone path: the /usr/share/zoneinfo/timezone path of the current system
+# tarball is stage5: used to force acceptance of the tarball, even if it doesn't
+# appear to be a stage5.
+
 required_args=( "BUILD_DIR" "TARBALL" "TIMEZONE_PATH" )
 understood_args=( "${required_args[@]}" )
 understood_args+=( "TARBALL_IS_STAGE5" )
