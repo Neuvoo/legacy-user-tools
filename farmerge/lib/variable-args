@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# TODO: allow for "submodule" usage
+# TODO: allow for per-module descriptions in usage
+
 function human_to_machine_arg() {
 	echo "${@}" | tr '[:lower:]' '[:upper:]' | tr - _
 }
@@ -25,6 +28,7 @@ function usage() {
 }
 
 while [[ "$1" != "" ]]; do
+	# if the argument doesn't begin with -- or wasn't consumed by the for loop, we don't know about it
 	if [[ "${1:0:2}" != "--" || "${1:2}" == "${arg}" ]]; then
 		echo "Error: argument not understood: ${1}"
 		usage

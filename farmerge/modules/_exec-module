@@ -5,7 +5,6 @@ shift
 
 if [[ ! -f "${MODULES_BASEDIR}/${module}" ]]; then
 	echo "Error: module not found: ${module}"
-	usage
 	exit 255
 fi
 
@@ -17,6 +16,6 @@ done
 
 echo " >>> Executing '${module} ${args[@]}'..."
 "${MODULES_BASEDIR}/${module}" "${args[@]}"; exit_status="$?"
-echo " >>> Exitting ${module}"
+echo " >>> Exiting ${module}"
 
 exit "${exit_status}"

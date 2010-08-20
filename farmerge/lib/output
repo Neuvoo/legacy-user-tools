@@ -4,6 +4,5 @@ function vrun () {
 	local args
 	args=( "${@}" )
 	echo "Executing \"${args[@]}\"..."
-	"${args[@]}"
-	return $?
+	"${args[@]}" || return $?
 }

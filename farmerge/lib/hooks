@@ -16,7 +16,7 @@ done
 function add_hook () {
 	local stage hook_uid exec
 	stage="${1}"; shift
-	hook_uid="${2}"; shift
+	hook_uid="${1}"; shift
 	exec="${@}"
 	if [[ "${stage}" == "" ]]; then
 		echo "Error: add_hook: stage must be specified" >&2
@@ -37,6 +37,7 @@ function add_hook () {
 ${exec}
 exit $?
 EOF
+				chmod u+x "${hooks_basedir}/${stage}/${hook_uid}" || return $?
 				return
 			else
 				return 254
@@ -51,7 +52,7 @@ EOF
 function delete_hook () {
 	local stage hook_uid
 	stage="${1}"; shift
-	hook_uid="${2}"; shift
+	hook_uid="${1}"; shift
 	if [[ "${stage}" == "" ]]; then
 		echo "Error: add_hook: stage must be specified" >&2
 		return 255
@@ -77,7 +78,9 @@ function execute_hooks () {
 		return 255
 	fi
 	
-	if [[ "$(find ${hooks_basedir}/${stage} -type d -empty)" != "" ]]; then
+	if [[ ! -d "${hooks_basedir}/${stage}" ]]; then
+		return
+	elif [[ "$(find ${hooks_basedir}/${stage} -type d -empty)" != "" ]]; then
 		return
 	fi
 	
@@ -86,6 +89,7 @@ function execute_hooks () {
 			echo "Warning: skipping non-file: ${i}" >&2
 		fi
 		( "${i}" ) || some_failed="1"
+		echo "Removing old hook file: ${i}"
 		rm "${i}"
 	done
 	

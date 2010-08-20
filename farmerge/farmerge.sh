@@ -17,7 +17,10 @@ export MODULES_BASEDIR="${BASEDIR}/modules"
 export TMP_BASEDIR="$(mktemp -d)"
 
 trap 'source ${LIB_BASEDIR}/hooks
-      execute_hooks shutdown
+      echo
+      echo
+      echo "Pre-exit cleaning..."
+      execute_hooks exit
       rm -r "${TMP_BASEDIR}"' 0
 # the following handler will exit the script on receiving these signals
 # the trap on "0" (EXIT) from above will be triggered by this trap's "exit" command
@@ -61,6 +64,10 @@ fi
 export DEVICE="${device}"
 export DEVICE_BASEDIR="${basedir}/${device}"
 
-source "${CONF_BASEDIR}/global.config" || echo "Warning: failed to load global configuration!"
+if ! source "${CONF_BASEDIR}/global.config"; then
+	echo "Error: failed to load global configuration!" >&2
+	echo "You can create an empty configuration, but it is much easier to fill it out." >&2
+	exit 1
+fi
 
 "${MODULES_BASEDIR}/_exec-module" "${module}" "${args[@]}" || exit $?

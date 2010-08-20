@@ -1,6 +1,7 @@
 #!/bin/bash
 
-echo "${@}"
-echo bash --login
-read
-exit $?
+source "${LIB_BASEDIR}/output"
+
+echo
+echo "Exit the shell when you are done"
+vrun bash --login || exit $?

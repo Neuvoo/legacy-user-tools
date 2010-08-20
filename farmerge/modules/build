@@ -3,19 +3,19 @@
 understood_args=( "BUILD_ACTION" "CPV" "BUILD_DIR" "STAGING_SSH_URI" "STAGING_SSH_PATH" "MIRROR_SSH_URI" "MIRROR_SSH_PATH" "MIRROR_HTTP_URI" "LOCK_SSH_URI" "LOCK_SSH_PATH" )
 
 source "${LIB_BASEDIR}/variable-args" || exit $?
-
 if [[ "${BUILD_ACTION}" == "" ]]; then
 	BUILD_ACTION="build"
 	echo "--$(machine_to_human_arg BUILD_ACTION) is empty, defaulting to: ${BUILD_ACTION}"
 fi
-
 check_for_required_args "${understood_args[@]}" || exit $?
 
+source "${LIB_BASEDIR}/output"
+# TODO: rsync_args needs to be a config option
 rsync_args=( -cav --progress --delete --exclude='.lock' --exclude='.staging' )
 
 "${MODULES_BASEDIR}/_exec-module" mirror-lock --mirror-action lock --lock-ssh-uri "${LOCK_SSH_URI}" --lock-ssh-path "${LOCK_SSH_PATH}" || exit $?
 
-"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action init || exit $?
+"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action init --build-binpkg-subdir "/binpkgs" --build-dist-subdir "/tmp/distdir" || exit $?
 
 # Bug: there has to be at least one argument here
 emerge_args=( -v )
@@ -28,20 +28,20 @@ if [[ "${once}" == "1" ]]; then
 fi
 
 if [[ "${BUILD_ACTION}" == "shell" ]]; then
-	"${MODULES_BASEDIR}/_exec-module" setup_chroot --chroot-action append_stdin <<EOF
+	"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action append_stdin --build-binpkg-subdir "/binpkgs" --build-dist-subdir "/tmp/distdir" <<EOF || exit $?
 echo "You can now edit ${BUILD_DIR}/.* files"
 echo "Exit when finished"
 vrun bash --login
 EOF
 
 elif [[ "${BUILD_ACTION}" == "build" ]]; then
-	"${MODULES_BASEDIR}/_exec-module" setup_chroot --chroot-action append_stdin <<EOF
+	"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action append_stdin --build-binpkg-subdir "/binpkgs" --build-dist-subdir "/tmp/distdir"<<EOF || exit $?
 vrun emerge "${emerge_args[@]}" -bguDN "${CPV}" || exit \$?
 vrun revdep-rebuild || exit \$?
 EOF
 
 elif [[ "${BUILD_ACTION}" == "remove" ]]; then
-	"${MODULES_BASEDIR}/_exec-module" setup_chroot --chroot-action append_stdin <<EOF
+	"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action append_stdin --build-binpkg-subdir "/binpkgs" --build-dist-subdir "/tmp/distdir"<<EOF || exit $?
 vrun emerge "${emerge_args[@]}" --depclean "${CPV}" || exit \$?
 vrun revdep-rebuild || exit \$?
 EOF
@@ -55,7 +55,7 @@ fi
 "${MODULES_BASEDIR}/_exec-module" sync --sync-action down --mirror-ssh-uri "${MIRROR_SSH_URI}" --mirror-ssh-path "${MIRROR_SSH_PATH}" --staging-ssh-uri "${STAGING_SSH_URI}" --staging-ssh-path "${STAGING_SSH_PATH}" --sync-dir "${BUILD_DIR}/binpkgs" --build-root-dir "${BUILD_DIR}" --build-binpkg-dir "${BUILD_DIR}/binpkgs" || exit $?
 
 echo "Entering chroot"
-"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action execute; exit_status="$?"
+"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action execute --build-binpkg-subdir "/binpkgs" --build-dist-subdir "/tmp/distdir"; exit_status="$?"
 echo "Exiting chroot"
 
 if [[ "${exit_status}" != "0" ]]; then exit "${exit_status}"; fi

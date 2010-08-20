@@ -2,7 +2,7 @@
 
 understood_args=( "MIRROR_ACTION" "LOCK_SSH_URI" "LOCK_SSH_PATH" ) 
 source "${LIB_BASEDIR}/variable-args" || exit $?
-check_for_required_args "${understood_args[@]}"
+check_for_required_args "${understood_args[@]}" || exit $?
 
 source "${LIB_BASEDIR}/hooks"
 
@@ -12,18 +12,18 @@ function lock () {
 	[[ "${exit_code}" != "0" ]] && return "${exit_code}"
 
 	echo "Locking mirror..."
-	output="$(ssh ${LOCK_SSH_URI} '( [[ ! -d '"${LOCK_SSH_PATH}"' ]] && mkdir '"${LOCK_SSH_PATH}"' 2>/dev/null && echo '\'`uname -a`\'' > '"${LOCK_SSH_PATH}"'/host ) || echo 'exit code: '$?'; uname: '$(cat '"${LOCK_SSH_PATH}"'/host)' 2>/dev/null || echo local:$?)"
+	output="$(ssh ${LOCK_SSH_URI} '( [[ ! -d '"${LOCK_SSH_PATH}"' ]] && mkdir '"${LOCK_SSH_PATH}"' 2>/dev/null && echo '\'`uname -a`\'' > '"${LOCK_SSH_PATH}"'/host ) || echo exit code: $? uname: $(cat '"${LOCK_SSH_PATH}"'/host) 2>/dev/null' || echo local:$?)"
 	if [[ -n "$output" ]]; then
 		echo "Error acquiring lock:" >&2
 		echo "$output" >&2
+		delete_hook exit '50-lock-'"${LOCK_SSH_URI}"
 		return 1
 	fi
 }
 
 function unlock () {
 	delete_hook exit '50-lock-'"${LOCK_SSH_URI}"; exit_code="$?"
-	[[ "${exit_code}" == "254" ]] && return
-	[[ "${exit_code}" != "0" ]] && return "${exit_code}"
+	[[ "${exit_code}" != "254" ]] && [[ "${exit_code}" != "0" ]] && return "${exit_code}"
 	
 	echo "Unlocking mirror..."
 	ssh "${LOCK_SSH_URI}" rm -r "${LOCK_SSH_PATH}"
@@ -39,4 +39,4 @@ case "${MIRROR_ACTION}" in
 		echo "Error: action not understood: ${MIRROR_ACTION}" >&2
 		exit 255
 		;;
-done
+esac
