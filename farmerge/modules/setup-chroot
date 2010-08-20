@@ -24,27 +24,30 @@ function unmount() {
 	[[ "${exit_code}" != "254" ]] && [[ "${exit_code}" != "0" ]] && return "${exit_code}"
 	
 	vrun umount "${BUILD_DIR}"/dev/pts || return $?
+	vrun umount "${BUILD_DIR}"/dev || return $?
 	vrun umount "${BUILD_DIR}"/sys || return $?
 	vrun umount "${BUILD_DIR}"/proc || return $?
 	
 	execute_hooks "chroot-unmount" || return $?
 }
 
-function mount() {
+# The name is mountz internally because mount is taken
+function mountz() {
 	add_hook exit '50-unmount-'"$(basename ${BUILD_DIR})" "${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action unmount --build-dir "${BUILD_DIR}" --build-binpkg-subdir "${BUILD_BINPKG_SUBDIR}" --build-dist-subdir "${BUILD_DIST_SUBDIR}"; exit_code="$?"
 	[[ "${exit_code}" == "254" ]] && return
 	[[ "${exit_code}" != "0" ]] && return "${exit_code}"
 
 	vrun mount --bind /proc "${BUILD_DIR}"/proc || return $?
 	vrun mount --bind /sys "${BUILD_DIR}"/sys || return $?
+	vrun mount --bind /dev "${BUILD_DIR}"/dev || return $?
 	vrun mount --bind /dev/pts "${BUILD_DIR}"/dev/pts || return $?
-	vrun cp -L /etc/resolv.conf "${BUILD_DIR}"/etc/ || return $?
+	cp -L /etc/resolv.conf "${BUILD_DIR}"/etc/ || return $?
 	
 	execute_hooks "chroot-mount" || return $?
 }
 
 function init() {
-	mount || return $?
+	mountz || return $?
 
 	cat > "${BUILD_DIR}/chroot.run" <<EOF || return $?
 #!/bin/bash
@@ -81,7 +84,10 @@ if [[ ! -d "${BUILD_DIR}" ]]; then
 fi
 
 case "${CHROOT_ACTION}" in
-	init | mount | unmount | append_stdin | execute)
+	mount)
+		mountz || exit $?
+		;;
+	init | unmount | append_stdin | execute)
 		"${CHROOT_ACTION}" || exit $?
 		;;
 	*)
