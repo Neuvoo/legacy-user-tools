@@ -67,6 +67,8 @@ export PORTAGE_BINHOST="${MIRROR_HTTP_URI}"
 export USE="bindist"
 
 # Initial setup required before any action
+echo "Merging configurations mercilessly..."
+echo "-5" | etc-update || exit \$?
 echo "Syncing portage..."
 which layman 2>&1 > /dev/null && vrun layman -S || exit \$?
 vrun emerge --sync -v # || exit \$? # squashfs-hooks messes up this exit thing. :/
