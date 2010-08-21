@@ -29,6 +29,13 @@ source "${LIB_BASEDIR}/hooks"
 source "${LIB_BASEDIR}/output"
 
 function down() {
+	echo "Checking timestamp..."
+	if [[ "$(ssh ${MIRROR_SSH_URI} 'cat /'"${MIRROR_SSH_PATH}"'/.timestamp')" == "$(cat ${SYNC_DIR}/.timestamp)" ]]; then
+		echo "Timestamp matches, already have latest copy of mirror."
+		return
+	fi
+	echo "Timestamp mismatch, syncing..."
+	
 	# Sync mirror to local
 	vrun rsync "${RSYNC_ARGS[@]}" "${MIRROR_SSH_URI}:/${MIRROR_SSH_PATH}/" "${SYNC_DIR}" || return $?
 
@@ -46,11 +53,14 @@ function up() {
 	vrun cp -v "${BUILD_ROOT_DIR}/var/lib/portage/world" "${SYNC_DIR}/.world" || return $?
 	vrun rsync --delete -av "${BUILD_ROOT_DIR}/etc/portage/" "${SYNC_DIR}/.portage/" || return $?
 	# TODO: support BUILD_BINPKG_DIR
+	
+	# Update time-stamp
+	cat "$(date -u +%s)" > "${SYNC_DIR}/.timestamp"
 
 	# Sync local mirror copy to staging
-	vrun rsync "${RSYNC_ARGS[@]}" "${BUILD_ROOT_DIR}/" "${STAGING_SSH_URI}:/${STAGING_SSH_PATH}/" || return $?
+	vrun rsync "${RSYNC_ARGS[@]}" "${SYNC_DIR}/" "${STAGING_SSH_URI}:/${STAGING_SSH_PATH}/" || return $?
 	# Copy staging into place on mirror
-	vrun ssh "${MIRROR_SSH_URI}" rsync "${RSYNC_ARGS[@]}" "${STAGING_SSH_PATH}/" "${MIRROR_SSH_PATH}" || return $?
+	vrun ssh "${MIRROR_SSH_URI}" rsync "${RSYNC_ARGS[@]}" "${STAGING_SSH_PATH}/" "${MIRROR_SSH_PATH}/" || return $?
 	# TODO: support differing MIRROR_SSH_URI and STAGING_SSH_URI
 	
 	execute_hooks "sync-up" || return $?
