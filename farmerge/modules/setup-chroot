@@ -23,12 +23,16 @@ function unmount() {
 	delete_hook exit '50-unmount-'"$(basename ${BUILD_DIR})"; exit_code="$?"
 	[[ "${exit_code}" != "254" ]] && [[ "${exit_code}" != "0" ]] && return "${exit_code}"
 	
-	vrun umount "${BUILD_DIR}"/dev/pts || return $?
-	vrun umount "${BUILD_DIR}"/dev || return $?
-	vrun umount "${BUILD_DIR}"/sys || return $?
-	vrun umount "${BUILD_DIR}"/proc || return $?
+	# Try to unmount everything, to clean up as much as possible
+	some_failed="0"
+	vrun umount "${BUILD_DIR}"/dev/pts || some_failed="1"
+	vrun umount "${BUILD_DIR}"/dev || some_failed="1"
+	vrun umount "${BUILD_DIR}"/sys || some_failed="1"
+	vrun umount "${BUILD_DIR}"/proc || some_failed="1"
 	
-	execute_hooks "chroot-unmount" || return $?
+	execute_hooks "chroot-unmount" || some_failed="1"
+	
+	return "${some_failed}"
 }
 
 # The name is mountz internally because mount is taken
@@ -63,9 +67,11 @@ export PORTAGE_BINHOST="${MIRROR_HTTP_URI}"
 export USE="bindist"
 
 # Initial setup required before any action
+echo "Syncing portage..."
 which layman 2>&1 > /dev/null && vrun layman -S || exit \$?
 vrun emerge --sync -v # || exit \$? # squashfs-hooks messes up this exit thing. :/
-vrun emerge -GuDNv world system || exit \$?
+echo "Resetting installed packages to the latest from the binary repository..."
+vrun emerge -KGuDNv world system || exit \$?
 EOF
 }
 
