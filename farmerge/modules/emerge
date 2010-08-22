@@ -56,12 +56,16 @@ elif [[ "${EMERGE_ACTION}" == "build" ]]; then
 	"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action append_stdin --build-binpkg-subdir "/binpkgs" --build-dist-subdir "/tmp/distdir"<<EOF || exit $?
 vrun emerge "${emerge_args[@]}" -bguDN "${CPV}" || exit \$?
 vrun revdep-rebuild || exit \$?
+vrun qpkg -c || exit \$?
+vrun emaint binhost -f || exit \$?
 EOF
 
 elif [[ "${EMERGE_ACTION}" == "remove" ]]; then
 	"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action append_stdin --build-binpkg-subdir "/binpkgs" --build-dist-subdir "/tmp/distdir"<<EOF || exit $?
 vrun emerge "${emerge_args[@]}" --depclean "${CPV}" || exit \$?
 vrun revdep-rebuild || exit \$?
+vrun qpkg -c || exit \$?
+vrun emaint binhost -f || exit \$?
 EOF
 
 else
