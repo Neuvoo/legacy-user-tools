@@ -55,7 +55,7 @@ function up() {
 	# TODO: support BUILD_BINPKG_DIR
 	
 	# Update time-stamp
-	cat "$(date -u +%s)" > "${SYNC_DIR}/.timestamp"
+	echo "$(date -u +%s)" > "${SYNC_DIR}/.timestamp"
 
 	# Sync local mirror copy to staging
 	vrun rsync "${RSYNC_ARGS[@]}" "${SYNC_DIR}/" "${STAGING_SSH_URI}:/${STAGING_SSH_PATH}/" || return $?
