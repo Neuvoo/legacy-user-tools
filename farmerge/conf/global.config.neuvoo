@@ -1,0 +1,24 @@
+#!/bin/bash
+# These variables are in the environment before this configuration is sourced:
+# BASEDIR = "path to parent directory of farmage.sh"
+# DEVICE = "name of Neuvoo-supported device"
+# CONF_BASEDIR = "path to conf directory"
+# DEVICE_BASEDIR = "path to device's chroot"
+# LIB_BASEDIR = "path to lib directory"
+# MODULES_BASEDIR = "path to modules directory"
+#
+# Variables MUST be exported to be of any use
+
+export BUILD_DIR="${BASEDIR}/${DEVICE}"
+export TIMEZONE_PATH="/usr/share/zoneinfo/America/New_York"
+#export STAGING_SSH_URI="user@host" # see bottom for note
+export STAGING_SSH_PATH="/var/www/neuvoo.org/htdocs/neuvoo/packages/armv7a/${DEVICE}/.staging"
+export MIRROR_SSH_URI="root@neuvoo.org"
+export MIRROR_SSH_PATH="/var/www/neuvoo.org/htdocs/neuvoo/packages/armv7a/${DEVICE}"
+export MIRROR_HTTP_URI="http://neuvoo.org/neuvoo/packages/armv7a/${DEVICE}/"
+export LOCK_SSH_URI="root@neuvoo.org"
+export LOCK_SSH_PATH="/var/www/neuvoo.org/htdocs/neuvoo/packages/armv7a/${device}/.lock"
+
+# Do NOT change this or attempt to override
+# Support for differing staging and mirror locations is not yet available
+export STAGING_SSH_URI="${MIRROR_SSH_URI}"
