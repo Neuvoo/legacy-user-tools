@@ -15,14 +15,19 @@
 # lock ssh uri: the user@host for the lock host.
 # lock ssh path: the /path/to/locks on the lock host.
 
-understood_args=( "EMERGE_ACTION" "CPV" "BUILD_DIR" "STAGING_SSH_URI" "STAGING_SSH_PATH" "MIRROR_SSH_URI" "MIRROR_SSH_PATH" "MIRROR_HTTP_URI" "LOCK_SSH_URI" "LOCK_SSH_PATH" )
+required_args=( "EMERGE_ACTION" "BUILD_DIR" "STAGING_SSH_URI" "STAGING_SSH_PATH" "MIRROR_SSH_URI" "MIRROR_SSH_PATH" "MIRROR_HTTP_URI" "LOCK_SSH_URI" "LOCK_SSH_PATH" )
+understood_args=( "${required_args[@]}" )
+understood_args+=( "CPV" )
 
 source "${LIB_BASEDIR}/variable-args" || exit $?
 if [[ "${EMERGE_ACTION}" == "" ]]; then
 	EMERGE_ACTION="build"
 	echo "--$(machine_to_human_arg EMERGE_ACTION) is empty, defaulting to: ${EMERGE_ACTION}"
 fi
-check_for_required_args "${understood_args[@]}" || exit $?
+if [[ "${EMERGE_ACTION}" == "build" ]]; then
+	required_args+=( "CPV" )
+fi
+check_for_required_args "${required_args[@]}" || exit $?
 
 source "${LIB_BASEDIR}/output"
 source "${LIB_BASEDIR}/hooks"
