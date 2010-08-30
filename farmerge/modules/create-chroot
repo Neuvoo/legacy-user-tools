@@ -31,6 +31,6 @@ if [[ ! -n "${TARBALL_IS_STAGE5}" ]]; then
 fi
 
 vrun mkdir "${BUILD_DIR}" || exit $?
-vrun tar -xvpf "${TARBALL}" -C "${BUILD_DIR}" || exit $?
+vrun tar --numeric-owner -xvpf "${TARBALL}" -C "${BUILD_DIR}" || exit $?
 vrun chmod +rx "${BUILD_DIR}" || exit $?
 vrun ln -sf "${TIMEZONE_PATH}" "${BUILD_DIR}/etc/localtime" || exit $?
