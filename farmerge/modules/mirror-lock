@@ -18,18 +18,21 @@ check_for_required_args "${understood_args[@]}" || exit $?
 source "${LIB_BASEDIR}/hooks"
 
 function lock () {
-	add_hook exit '75-lock-'"${LOCK_SSH_URI}" "${MODULES_BASEDIR}/_exec-module" mirror-lock --mirror-action unlock --lock-ssh-uri "${LOCK_SSH_URI}" --lock-ssh-path "${LOCK_SSH_PATH}"; exit_code="$?"
+	hook_opts=( exit '75-lock-'"${LOCK_SSH_URI}" "${MODULES_BASEDIR}/_exec-module" mirror-lock --mirror-action unlock --lock-ssh-uri "${LOCK_SSH_URI}" --lock-ssh-path "${LOCK_SSH_PATH}")
+	add_hook "${hook_opts[@]}"; exit_code="$?"
 	[[ "${exit_code}" == "254" ]] && return
 	[[ "${exit_code}" != "0" ]] && return "${exit_code}"
+	delete_hook exit '75-lock-'"${LOCK_SSH_URI}"
 
 	echo "Locking mirror..."
 	output="$(ssh ${LOCK_SSH_URI} '( [[ ! -d '"${LOCK_SSH_PATH}"' ]] && mkdir '"${LOCK_SSH_PATH}"' 2>/dev/null && echo '\'`uname -a`\'' > '"${LOCK_SSH_PATH}"'/host ) || echo exit code: $? uname: $(cat '"${LOCK_SSH_PATH}"'/host) 2>/dev/null' || echo local:$?)"
 	if [[ -n "$output" ]]; then
 		echo "Error acquiring lock:" >&2
 		echo "$output" >&2
-		delete_hook exit '75-lock-'"${LOCK_SSH_URI}"
 		return 1
 	fi
+	add_hook "${hook_opts[@]}"; exit_code="$?"
+
 }
 
 function unlock () {
