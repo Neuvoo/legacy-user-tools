@@ -32,7 +32,7 @@ while [ "x$rootpassword" = "x" ] ; do
 done
 
 # set root passwd
-if [ testrun == "yes" ] ; then
+if ! [ testrun == "yes" ] ; then
 	passwd "root" <<EOF
 	$rootpassword
 	$rootpassword
