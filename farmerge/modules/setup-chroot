@@ -93,13 +93,15 @@ vrun emerge --sync -v # || exit \$? # squashfs-hooks messes up this exit thing. 
 echo "Resetting installed packages to the latest from the binary repository..."
 vrun emerge -KGuDNv world system || exit \$?
 echo "Checking for missing binpkgs..."
-binpkgs=\$(/binpkgs-missing)
+binpkgs=\$(/binpkgs-missing) || exit \$?
 if [[ "\${binpkgs}" != "" ]]; then
-	vrun emerge -1Bv \${binpkgs}
+	vrun emerge -1gbv \${binpkgs} || exit \$?
 else
-	echo "None missing!"
+	echo 'None missing!'
 fi
 EOF
+chmod +x "${BUILD_DIR}/chroot.run"
+chmod +x "${BUILD_DIR}/binpkgs-missing"
 }
 
 function append_stdin() {
