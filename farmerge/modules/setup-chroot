@@ -60,6 +60,24 @@ EOF
 
 cat "${LIB_BASEDIR}/output" >> "${BUILD_DIR}/chroot.run" || return $?
 
+cat >> "${BUILD_DIR}/binpkgs-missing" <<EOF
+#!/usr/bin/python
+# http://dev.gentoo.org/~zmedico/tmp/binpkgs-missing
+
+import sys
+import portage
+
+root = portage.settings["ROOT"]
+vardb = portage.db[root]["vartree"].dbapi
+bindb = portage.db[root]["bintree"].dbapi
+installed_packages = set(vardb.cpv_all())
+binary_packages = set(bindb.cpv_all())
+missing_binpkgs = list(installed_packages.difference(binary_packages))
+missing_binpkgs.sort()
+for cpv in missing_binpkgs:
+	sys.stdout.write("=%s " % cpv)
+EOF
+
 cat >> "${BUILD_DIR}/chroot.run" <<EOF || return $?
 export PKGDIR="${BUILD_BINPKG_SUBDIR}"
 export DISTDIR="${BUILD_DIST_SUBDIR}"
@@ -74,6 +92,13 @@ which layman 2>&1 > /dev/null && vrun layman -S || exit \$?
 vrun emerge --sync -v # || exit \$? # squashfs-hooks messes up this exit thing. :/
 echo "Resetting installed packages to the latest from the binary repository..."
 vrun emerge -KGuDNv world system || exit \$?
+echo "Checking for missing binpkgs..."
+binpkgs=\$(/binpkgs-missing)
+if [[ "\${binpkgs}" != "" ]]; then
+	vrun emerge -1Bv \${binpkgs}
+else
+	echo "None missing!"
+fi
 EOF
 }
 
