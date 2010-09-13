@@ -52,8 +52,7 @@ fi
 
 if [[ "${EMERGE_ACTION}" == "shell" ]]; then
 	"${MODULES_BASEDIR}/_exec-module" setup-chroot --chroot-action append_stdin --build-binpkg-subdir "/binpkgs" --build-dist-subdir "/tmp/distdir" <<EOF || exit $?
-echo "You can now edit ${BUILD_DIR}/.* files"
-echo "Exit when finished"
+echo "Exit when finished with the farmerge shell"
 vrun bash --login
 EOF
 
